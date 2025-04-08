@@ -6,12 +6,16 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: "123"
       MYSQL_DATABASE: "430_db"
+    # Since the data is being persisted in a volume (by default in a sql image), and in our case I will be re-initializing the database every time, I will not use a volume. If you want to persist the data, you can uncomment the tmpfs section.
+    # Use a tmpfs mount to override the persistent volume!
+    tmpfs:
+      - /var/lib/mysql
     networks:
       - app-network
 
   backend:
     build:
-      context: ./backend
+      ./backend
     ports:
       - "8001:8000" # Only backend exposed to the frontend on http://localhost:8001/
     env_file:
