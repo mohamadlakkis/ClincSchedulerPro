@@ -14,5 +14,5 @@ def get_connection():
         if connection.is_connected():
             return connection
     except Error as e:
-        print("Error while connecting to MySQL:", e)
+        print(f"Error while connecting to MySQL: {e}")
         return None

@@ -1,19 +1,28 @@
 services:
   database:
-    build:
-      context: ./database
-    ports:
-      - "3306:3306"
+    build: 
+      ./database
+    # Notice: No "ports" mapping here, so the database isn't directly exposed.
     environment:
       MYSQL_ROOT_PASSWORD: "123"
       MYSQL_DATABASE: "430_db"
+    networks:
+      - app-network
 
   backend:
     build:
       context: ./backend
     ports:
-      - "8000:8000"
+      - "8001:8000" # Only backend exposed to the frontend on http://localhost:8001/
     env_file:
       - ./backend/.env
+    environment:
+      - PYTHONUNBUFFERED=1  # streams are sent straight to terminal
     depends_on:
       - database
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

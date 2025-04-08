@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from db import get_connection
+from db_connection import get_connection
 
 app = FastAPI()
 
@@ -13,7 +13,7 @@ def get_admins():
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
     try:
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor(dictionary=True) # used dict = True to return the results as dict
         cursor.execute("SELECT * FROM Admin")
         admins = cursor.fetchall()
         return {"admins": admins}
