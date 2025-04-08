@@ -1,7 +1,9 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "../styles/calender.css";
 
 const Calendar = () => {
+  const navigate = useNavigate();
   const [currentWeek, setCurrentWeek] = useState(0);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -193,86 +195,111 @@ const Calendar = () => {
 
   return (
     <div className="calendar-container">
-      <div className="calendar-header">
-        <h2>Appointment Calendar</h2>
-        <div className="date-navigation">
-          <button onClick={handlePreviousWeek} disabled={currentWeek === 0}>
-            Previous Week
-          </button>
-          <button onClick={handleFirstWeek} disabled={currentWeek === 0}>
-            Current Week
-          </button>
-          <button onClick={handleNextWeek} disabled={currentWeek === 3}>
-            Next Week
-          </button>
+      <header className="calendar-header">
+        <div className="header-content">
+          <h1>Appointment Calendar</h1>
+          <p>Schedule and manage your medical appointments</p>
         </div>
-      </div>
+      </header>
 
-      <div className="week-display">
-        <div className="week-label">{getWeekLabel()}</div>
-        <div className="date-range">
-          {firstDay.toLocaleDateString()} - {lastDay.toLocaleDateString()}
+      <main className="calendar-main">
+        <div className="calendar-controls">
+          <div className="date-navigation">
+            <button onClick={handlePreviousWeek} disabled={currentWeek === 0}>
+              Previous Week
+            </button>
+            <button onClick={handleFirstWeek} disabled={currentWeek === 0}>
+              Current Week
+            </button>
+            <button onClick={handleNextWeek} disabled={currentWeek === 3}>
+              Next Week
+            </button>
+          </div>
+
+          <div className="week-display">
+            <div className="week-label">{getWeekLabel()}</div>
+            <div className="date-range">
+              {firstDay.toLocaleDateString()} - {lastDay.toLocaleDateString()}
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div className="calendar-grid">
-        <div className="time-column">
-          <div className="time-header">Time</div>
-          {timeSlots.map((time) => (
-            <div key={time} className="time-slot">
-              {time}
+        <div className="calendar-grid">
+          <div className="time-column">
+            <div className="time-header">Time</div>
+            {timeSlots.map((time) => (
+              <div key={time} className="time-slot">
+                {time}
+              </div>
+            ))}
+          </div>
+
+          {weekDays.map((day) => (
+            <div
+              key={day.toISOString()}
+              className={`day-column ${isPastDate(day) ? "past-day" : ""}`}
+            >
+              <div className="day-header">
+                {day.toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </div>
+              {timeSlots.map((time) => {
+                const isBookedByPatient = isSlotBookedByPatient(
+                  formatDate(day),
+                  time
+                );
+                const isBookedByOthers = isSlotBookedByOthers(
+                  formatDate(day),
+                  time
+                );
+                const isPast = isPastDate(day);
+
+                return (
+                  <div
+                    key={`${day.toISOString()}-${time}`}
+                    className={`time-slot ${
+                      isPast
+                        ? ""
+                        : isBookedByPatient
+                        ? "user-booked"
+                        : isBookedByOthers
+                        ? "booked"
+                        : "available"
+                    }`}
+                    onClick={() => handleSlotClick(day, time)}
+                  >
+                    {isBookedByPatient
+                      ? "Your Booking"
+                      : isBookedByOthers
+                      ? "Booked"
+                      : "Available"}
+                  </div>
+                );
+              })}
             </div>
           ))}
         </div>
+      </main>
 
-        {weekDays.map((day) => (
-          <div
-            key={day.toISOString()}
-            className={`day-column ${isPastDate(day) ? "past-day" : ""}`}
+      <footer className="calendar-footer">
+        <div className="nav-buttons">
+          <button 
+            className="nav-button"
+            onClick={() => navigate('/')}
           >
-            <div className="day-header">
-              {day.toLocaleDateString("en-US", {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-              })}
-            </div>
-            {timeSlots.map((time) => {
-              const isBookedByPatient = isSlotBookedByPatient(
-                formatDate(day),
-                time
-              );
-              const isBookedByOthers = isSlotBookedByOthers(
-                formatDate(day),
-                time
-              );
-              const isPast = isPastDate(day);
-
-              return (
-                <div
-                  key={`${day.toISOString()}-${time}`}
-                  className={`time-slot ${
-                    isPast
-                      ? ""
-                      : isBookedByPatient
-                      ? "user-booked"
-                      : isBookedByOthers
-                      ? "booked"
-                      : "available"
-                  }`}
-                  onClick={() => handleSlotClick(day, time)}
-                >
-                  {isBookedByPatient
-                    ? "Your Booking"
-                    : isBookedByOthers
-                    ? "Booked"
-                    : "Available"}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
+            Go back home
+          </button>
+          <button 
+            className="nav-button"
+            onClick={() => navigate('/AssistAI')}
+          >
+            Try MediBot
+          </button>
+        </div>
+      </footer>
 
       {showBookingModal && (
         <div className="booking-modal">
