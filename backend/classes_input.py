@@ -22,6 +22,20 @@ class addAppointmentInput(BaseModel):
     DoctorId: int
     PatientId: int 
     Date: str = "2023-10-01"
-    startTime: str = "10:00"
-    endTime: str = "11:00"
+    startTime: int = 1
     feedback: Optional[str] = ""
+
+class showOneDoctorAllPatientsInput(BaseModel): 
+    DoctorId: int   
+    Date: str
+    PatienId: int
+
+
+class deleteAppointmentInput(BaseModel): 
+    PatientId: int
+    DoctorId: int
+    Date: str
+    startTime: int
+
+class getAllAppointmentsForPatientInput(BaseModel):
+    PatientId: int

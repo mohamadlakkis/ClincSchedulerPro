@@ -1,18 +1,18 @@
 from fastapi import FastAPI, HTTPException
 from db_connection import get_connection
 from classes_input import *
+from datetime import datetime, timedelta
+
 app = FastAPI()
 
 @app.get("/")
 def root():
     return {"message": "Hello, World!"}
 
-
-'''Admin Session'''
-
 # Get Endpoints: 
 @app.get("/getAdmins")
 def get_admins():
+    '''Only By Admins'''
     connection = get_connection()
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -29,6 +29,7 @@ def get_admins():
 
 @app.get("/getDoctors")
 def get_doctors():
+    '''Only By Admins'''
     connection = get_connection()
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -45,6 +46,7 @@ def get_doctors():
 
 @app.get("/getPatients")
 def get_patients():
+    '''Only By Admins'''
     connection = get_connection()
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -61,6 +63,7 @@ def get_patients():
 
 @app.get("/getAppointments")
 def get_appointments():
+    '''Only By Admins'''
     connection = get_connection()
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -74,9 +77,28 @@ def get_appointments():
     finally:
         cursor.close()
         connection.close()
+
+@app.get("/getAllAppointmentsForPatient")
+def getAllAppointmentsForPatient(input: getAllAppointmentsForPatientInput):
+    connection = get_connection()
+    if connection is None:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM Appointments WHERE PatientId = %s", (input.PatientId,))
+        appointments = cursor.fetchall()
+        return {"appointments": appointments}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        connection.close()
+
+
 # Post Endpoints:
 @app.post("/addDoctor")
 def addDoctor(input: addDoctorInput): 
+    '''Only By Admins'''
     connection = get_connection()
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -98,6 +120,7 @@ def addDoctor(input: addDoctorInput):
 
 @app.post("/addPatient")
 def addPatient(input: addPatientInput): 
+    '''Only By Admins'''
     connection = get_connection()
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -124,12 +147,23 @@ def insertAppointment(input: addAppointmentInput):
         raise HTTPException(status_code=500, detail="Database connection failed")
     try:
         cursor = connection.cursor()
+        # Check if the doctor is available in the current timing
+        cursor.execute("SELECT * FROM Appointments WHERE DoctorId = %s AND Date = %s AND startTime = %s",
+                       (input.DoctorId, input.Date, input.startTime))
+        if cursor.fetchone():
+            raise HTTPException(status_code=400, detail="Doctor is not available at the selected time")
+        # Check if the patient has an appointment at the same time
+        cursor.execute("SELECT * FROM Appointments WHERE PatientId = %s AND Date = %s AND startTime = %s",
+                       (input.PatientId, input.Date, input.startTime))
+        if cursor.fetchone():
+            raise HTTPException(status_code=400, detail="Patient already has an appointment at the selected time")
+        # Insert the appointment
         query = """
 
-            INSERT INTO Appointments (DoctorId, PatientId, Date, startTime, endTime, feedback)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO Appointments (DoctorId, PatientId, Date, startTime, feedback)
+            VALUES (%s, %s, %s, %s, %s)
         """
-        values = (input.DoctorId, input.PatientId, input.Date, input.startTime, input.endTime, input.feedback)
+        values = (input.DoctorId, input.PatientId, input.Date, input.startTime, input.feedback)
         cursor.execute(query, values)
         connection.commit()
         return {"message": "Appointment added successfully"}
@@ -139,7 +173,48 @@ def insertAppointment(input: addAppointmentInput):
         cursor.close()
         connection.close()
 
-@app.post("/showBusyDoctorsAllPatients")
-def showBusyDoctorsAllPatients(input): 
-    # restricted to admins only
-    return {"message": "showBusyDoctorsAllPatients"}
+@app.post("/showOneDoctorAllPatients")
+def showOneDoctorAllPatients(input: showOneDoctorAllPatientsInput):
+    connection = get_connection()
+    if connection is None:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    try:
+        cursor = connection.cursor()
+        # the one in blue 
+        current_date = input.Date
+        next_5_days = (datetime.strptime(current_date, "%Y-%m-%d") + timedelta(days=5)).strftime("%Y-%m-%d")
+        cursor.execute("SELECT Date,startTime FROM Appointments WHERE DoctorId = %s AND PatientId = %s AND Date >= %s AND Date <= %s",
+                       (input.DoctorId, input.PatienId, input.Date, next_5_days))
+        appointments_in_blue = cursor.fetchall()
+        cursor.execute("SELECT Date,startTime FROM Appointments WHERE DoctorId = %s AND PatientId != %s AND Date >= %s AND Date <= %s",
+                       (input.DoctorId, input.PatienId, input.Date, next_5_days))
+        appointments_in_red = cursor.fetchall()
+        return {
+            "appointments_in_blue" : appointments_in_blue, 
+            "appointments_in_red": appointments_in_red
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:    
+        cursor.close()
+        connection.close()
+
+@app.post("/deleteAppointment")
+def deleteAppointment(input: deleteAppointmentInput): 
+    connection = get_connection()
+    if connection is None:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    try:
+        cursor = connection.cursor()
+        query = """
+            DELETE FROM Appointments WHERE PatientId = %s AND DoctorId = %s AND Date = %s AND startTime = %s
+        """
+        values = (input.PatientId, input.DoctorId, input.Date, input.startTime)
+        cursor.execute(query, values)
+        connection.commit()
+        return {"message": "Appointment deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        connection.close()

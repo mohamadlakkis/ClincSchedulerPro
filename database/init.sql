@@ -26,8 +26,7 @@ CREATE TABLE Patients (
 CREATE TABLE Appointments (
     id INT NOT NULL AUTO_INCREMENT,
     Date DATE NOT NULL, -- day of the appointment
-    startTime time NOT NULL,
-    endTime time NOT NULL,
+    startTime INT NOT NULL,
     PatientId VARCHAR(10) NOT NULL,
     DoctorId VARCHAR(10) NOT NULL,
     feedback TEXT,
