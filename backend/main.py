@@ -2,6 +2,16 @@ from fastapi import FastAPI, HTTPException
 from db_connection import get_connection
 from classes_input import *
 from datetime import datetime, timedelta
+from medibot_RAG_service.mediBot import mediBotRag , initializeState
+from langgraph.types import Command
+
+
+# user information
+config = {"configurable": {"thread_id": "1"}}
+
+# Graph Initialization, this is just to initialize the states
+h = mediBotRag.invoke(initializeState(), config = config)
+
 
 app = FastAPI()
 
@@ -78,7 +88,9 @@ def get_appointments():
         cursor.close()
         connection.close()
 
-@app.get("/getAllAppointmentsForPatient")
+# Post Endpoints:
+
+@app.post("/getAllAppointmentsForPatient")
 def getAllAppointmentsForPatient(input: getAllAppointmentsForPatientInput):
     connection = get_connection()
     if connection is None:
@@ -94,8 +106,6 @@ def getAllAppointmentsForPatient(input: getAllAppointmentsForPatientInput):
         cursor.close()
         connection.close()
 
-
-# Post Endpoints:
 @app.post("/addDoctor")
 def addDoctor(input: addDoctorInput): 
     '''Only By Admins'''
@@ -200,7 +210,7 @@ def showOneDoctorAllPatients(input: showOneDoctorAllPatientsInput):
         connection.close()
 
 @app.post("/deleteAppointment")
-def deleteAppointment(input: deleteAppointmentInput): 
+def deleteAppointment(input: deleteAppointmentInput):   
     connection = get_connection()
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -218,3 +228,11 @@ def deleteAppointment(input: deleteAppointmentInput):
     finally:
         cursor.close()
         connection.close()
+
+# Chatbot Endpoint:
+@app.post("/mediBotRagEndpoint")
+def mediBotRagEndpoint(input: mediBotRagInput):
+    global mediBotRag
+    # Note for now I am not using PatientId, this is for later
+    h = mediBotRag.invoke(Command(resume = input.userQuestions), config = config)
+    return {"answer": h['answersAI'][-1]}

@@ -39,3 +39,7 @@ class deleteAppointmentInput(BaseModel):
 
 class getAllAppointmentsForPatientInput(BaseModel):
     PatientId: int
+
+class mediBotRagInput(BaseModel): 
+    userQuestions: str
+    PatientId: int
