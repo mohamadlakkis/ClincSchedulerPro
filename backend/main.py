@@ -29,6 +29,10 @@ def root():
 @app.get("/getAdmins")
 def get_admins():
     '''Only By Admins'''
+    '''
+    Documentation: 
+        - get all admins in the table of admins, only to admins 
+    '''
     connection = get_connection()
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -46,6 +50,10 @@ def get_admins():
 @app.get("/getDoctors")
 def get_doctors():
     '''Only By Admins'''
+    '''
+    Documentation: 
+        - get all doctors in the table of doctors, only to admins 
+    '''
     connection = get_connection()
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -63,6 +71,10 @@ def get_doctors():
 @app.get("/getPatients")
 def get_patients():
     '''Only By Admins'''
+    '''
+    Documentation: 
+        - get all patients in the table of patients, only to admins 
+    '''
     connection = get_connection()
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -80,6 +92,10 @@ def get_patients():
 @app.get("/getAppointments")
 def get_appointments():
     '''Only By Admins'''
+    '''
+    Documentation: 
+        - get all appointments in the table of appointments, only to admins
+    '''
     connection = get_connection()
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -98,6 +114,10 @@ def get_appointments():
 
 @app.post("/getAllAppointmentsForPatient")
 def getAllAppointmentsForPatient(input: getAllAppointmentsForPatientInput):
+    '''
+    Documentation: 
+        - For a parrtciular patient show all appointments
+    '''
     connection = get_connection()
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -115,6 +135,10 @@ def getAllAppointmentsForPatient(input: getAllAppointmentsForPatientInput):
 @app.post("/addDoctor")
 def addDoctor(input: addDoctorInput): 
     '''Only By Admins'''
+    '''
+    Documentation: 
+        - Add a parituclar doctor to the clinic db, restricted to only admins
+    '''
     connection = get_connection()
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -137,6 +161,10 @@ def addDoctor(input: addDoctorInput):
 @app.post("/addPatient")
 def addPatient(input: addPatientInput): 
     '''Only By Admins'''
+    '''
+    Documentation: 
+        - Add a parituclar patient to the clinic db, restricted to only admins
+    '''
     connection = get_connection()
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -158,6 +186,10 @@ def addPatient(input: addPatientInput):
 
 @app.post("/insertAppointment")
 def insertAppointment(input: addAppointmentInput):
+    '''
+    Documentation: 
+        - insert an appointment between a doctor and patient at a particular date and time 
+    '''
     connection = get_connection()
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -191,6 +223,10 @@ def insertAppointment(input: addAppointmentInput):
 
 @app.post("/showOneDoctorAllPatients")
 def showOneDoctorAllPatients(input: showOneDoctorAllPatientsInput):
+    '''
+    Documentation: 
+        - For a particular patient and doctor (and date of course), show all appointments between this doctor and this patient, and also show all (this) doctor appointments with other patietns in thsi date
+    '''
     connection = get_connection()
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -217,6 +253,10 @@ def showOneDoctorAllPatients(input: showOneDoctorAllPatientsInput):
 
 @app.post("/deleteAppointment")
 def deleteAppointment(input: deleteAppointmentInput):   
+    '''
+    Documentation: 
+        - to delete an appointment between patient and doctor at a particular day and time
+    '''
     connection = get_connection()
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -239,6 +279,11 @@ def deleteAppointment(input: deleteAppointmentInput):
 @app.post("/addPDFToVB")
 async def addDocumentToVB(file: UploadFile = File(description="Upload a PDF file of the document you want to add")):
     '''restricted to admins only'''
+    '''
+    Documentation: 
+        This endpoint is used to add a PDF document to the vector store. So now the vector is dynamic, the admin of the clinic, can add more documents to the vector store. 
+        note: vector store persistent across builds!
+    '''
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload a PDF file.")
     global vector_store
@@ -260,6 +305,10 @@ async def addDocumentToVB(file: UploadFile = File(description="Upload a PDF file
 
 @app.post("/mediBotRagEndpoint")
 def mediBotRagEndpoint(input: mediBotRagInput):
+    '''
+    Documentation: 
+        This endpoint is used to ask the question from the user to the RAG system, if the vector store is empty, regular LLM(gpt-4o in this case) will be used. 
+    '''
     global mediBotRag
     # Note for now I am not using PatientId, this is for later
     h = mediBotRag.invoke(Command(resume = input.userQuestions), config = config)
