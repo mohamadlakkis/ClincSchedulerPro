@@ -1,9 +1,15 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from starlette.formparsers import MultiPartParser
 from db_connection import get_connection
 from classes_input import *
 from datetime import datetime, timedelta
-from medibot_RAG_service.mediBot import mediBotRag , initializeState
+from medibot_RAG_service.mediBot import mediBotRag , initializeState, vector_store
 from langgraph.types import Command
+from langchain_community.document_loaders import PyPDFLoader
+import os
+import uuid
+from fastapi.responses import JSONResponse
+from tempfile import NamedTemporaryFile
 
 
 # user information
@@ -230,6 +236,28 @@ def deleteAppointment(input: deleteAppointmentInput):
         connection.close()
 
 # Chatbot Endpoint:
+@app.post("/addPDFToVB")
+async def addDocumentToVB(file: UploadFile = File(description="Upload a PDF file of the document you want to add")):
+    '''restricted to admins only'''
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Invalid file type. Please upload a PDF file.")
+    global vector_store
+    try: 
+        contents = await file.read()
+        with NamedTemporaryFile(delete=True, suffix=".pdf") as tmp:
+            tmp.write(contents)
+            tmp.flush()
+            tmp_path = tmp.name
+            loader = PyPDFLoader(tmp_path, mode = "single") # it is either single or page, if single then the whole pdf is one document, if page then each page is a document
+            docs = loader.load() 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    try: 
+        vector_store.add_documents(documents=docs)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"message": "Document added successfully"}
+
 @app.post("/mediBotRagEndpoint")
 def mediBotRagEndpoint(input: mediBotRagInput):
     global mediBotRag

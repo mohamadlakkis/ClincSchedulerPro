@@ -7,10 +7,20 @@ from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
 from medibot_RAG_service.prompts import *
 import os
+from langchain_openai import OpenAIEmbeddings
+from langchain_chroma import Chroma
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-model =   ChatOpenAI(api_key = OPENAI_API_KEY , model = "gpt-4o", temperature=0, max_tokens = 4095)
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small", api_key=OPENAI_API_KEY)
+
+vector_store = Chroma(
+    collection_name="430_collection",
+    embedding_function=embeddings,
+    persist_directory="/backend/chroma_430_vector_db",  # container path for the volume
+)
+
+model = ChatOpenAI(api_key = OPENAI_API_KEY , model = "gpt-4o", temperature=0, max_tokens = 4095)
 
 # State Definition
 class userState(TypedDict):
@@ -26,11 +36,19 @@ builder = StateGraph(userState)
 def askQuestion(state: userState) -> userState: 
     question = interrupt("what is your question?")
     state["userQuestions"].append(question)
-    state["contextWindow"].append(HumanMessage(content=question))
     return state
 
 def answerQuestion(state: userState) -> userState:
-    global model
+    global model, embeddings, vector_store
+    question = state["userQuestions"][-1]
+    results = vector_store.similarity_search(
+        question, 
+        k = 1 # nb of retreived documents
+    ) # most similar results
+    documents_added = True # this boolean, is to make sure to allow users to ask question to the LLM regardless if the Vector DB contain documents or not!
+    if not results: 
+        documents_added = False
+    state["contextWindow"].append(HumanMessage(content=mediBotsystemPrompt(results, question, documents_added)))
     answer = model.invoke(state["contextWindow"])
     state["contextWindow"].append(answer)
     state["answersAI"].append(answer.content)
