@@ -6,6 +6,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: "123"
       MYSQL_DATABASE: "430_db"
+    volumes:
+      - mysql-data:/var/lib/mysql
     networks:
       - app-network
 
@@ -31,3 +33,4 @@ networks:
 
 volumes:
   chroma_data_volume:
+  mysql-data:
