@@ -1,16 +1,12 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from starlette.formparsers import MultiPartParser
-from db_connection import get_connection
-from classes_input import *
+from database_connection_service.db_connection import get_connection
+from database_connection_service.classes_input import *
 from datetime import datetime, timedelta
 from medibot_RAG_service.mediBot import mediBotRag , initializeState, vector_store
 from langgraph.types import Command
 from langchain_community.document_loaders import PyPDFLoader
-import os
-import uuid
-from fastapi.responses import JSONResponse
 from tempfile import NamedTemporaryFile
-
+from bot_scheduler_service.schedulerBot import schedulerBotFunction
 
 # user information
 config = {"configurable": {"thread_id": "1"}}
@@ -313,3 +309,9 @@ def mediBotRagEndpoint(input: mediBotRagInput):
     # Note for now I am not using PatientId, this is for later
     h = mediBotRag.invoke(Command(resume = input.userQuestions), config = config)
     return {"answer": h['answersAI'][-1]}
+
+# Scheduler Bot Endpoint:
+@app.post("/schedulerBotEndpoint")
+def schedulerBotEndpoint(input:str, PatientID: str): 
+    res = schedulerBotFunction(input, PatientID)
+    return {"answer": res} 
