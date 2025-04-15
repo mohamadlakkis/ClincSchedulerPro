@@ -5,7 +5,7 @@ CREATE TABLE Admin (
     CONSTRAINT Admin_PK PRIMARY KEY (email)
 );
 CREATE TABLE Doctors (
-  DoctorId VARCHAR(10) NOT NULL,
+  DoctorId INT NOT NULL,
   DoctorName VARCHAR(100) NOT NULL,
   DoctorInfo TEXT NOT NULL,
   DoctorSpecialty VARCHAR(100) NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE Doctors (
   CONSTRAINT DOCTOR_PK PRIMARY KEY (DoctorId)
 );
 CREATE TABLE Patients (
-  PatientId VARCHAR(10) NOT NULL,
+  PatientId INT NOT NULL,
   PatientName VARCHAR(100) NOT NULL,
   PatientInfo TEXT NOT NULL,
   PatientAge INT NOT NULL,
@@ -27,8 +27,8 @@ CREATE TABLE Appointments (
     id INT NOT NULL AUTO_INCREMENT,
     Date DATE NOT NULL, -- day of the appointment
     startTime INT NOT NULL,
-    PatientId VARCHAR(10) NOT NULL,
-    DoctorId VARCHAR(10) NOT NULL,
+    PatientId INT NOT NULL,
+    DoctorId INT NOT NULL,
     feedback TEXT,
     CONSTRAINT APPOINTMENT_PK PRIMARY KEY (id),
     CONSTRAINT APPOINTMENT_FK1 FOREIGN KEY (PatientId) REFERENCES Patients (PatientId),
