@@ -9,6 +9,15 @@ function AssistAI() {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
 
+  useEffect(() => {
+    // Add welcome message when component mounts
+    setMessages([{
+      text: "Hello! I'm MediBot, your medical assistant. I can help you with medical questions and provide health information. How can I assist you today?",
+      sender: 'bot',
+      time: getCurrentTime()
+    }]);
+  }, []);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -21,7 +30,7 @@ function AssistAI() {
     return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
 
@@ -35,16 +44,42 @@ function AssistAI() {
     setInput('');
     setIsTyping(true);
 
-    // Simulate bot response after a short delay
-    setTimeout(() => {
-      const botResponse = {
-        text: "I'm MediBot, your medical assistant. I can help you with scheduling appointments, answering medical questions, and providing general health information. How can I assist you today?",
+    try {
+      const response = await fetch('http://localhost:8001/mediBot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          question: input
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get response from MediBot');
+      }
+
+      const data = await response.json();
+      
+      setTimeout(() => {
+        const botResponse = {
+          text: data.response,
+          sender: 'bot',
+          time: getCurrentTime()
+        };
+        setMessages(prev => [...prev, botResponse]);
+        setIsTyping(false);
+      }, 1000);
+    } catch (error) {
+      console.error('Error:', error);
+      const errorResponse = {
+        text: "I'm sorry, there was an error processing your request. Please try again.",
         sender: 'bot',
         time: getCurrentTime()
       };
-      setMessages(prev => [...prev, botResponse]);
+      setMessages(prev => [...prev, errorResponse]);
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const handleKeyPress = (e) => {

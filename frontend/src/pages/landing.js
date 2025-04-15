@@ -43,7 +43,7 @@ function Landing() {
       <div className="main-content">
         <header className="landing-header">
           <div className="header-content">
-            <h1>Welcome to ClinicSceduler Pro</h1>
+            <h1>Welcome to ClinicScheduler Pro</h1>
             <p className="subtitle">
               Your AI-powered medical assistant for smarter healthcare management
             </p>
