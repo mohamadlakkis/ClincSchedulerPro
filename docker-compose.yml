@@ -1,0 +1,36 @@
+services:
+  database:
+    build: 
+      ./database
+    # Notice: No "ports" mapping here, so the database isn't directly exposed.
+    environment:
+      MYSQL_ROOT_PASSWORD: "123"
+      MYSQL_DATABASE: "430_db"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - app-network
+
+  backend:
+    build:
+      ./backend
+    ports:
+      - "8001:8000" # Only backend exposed to the frontend on http://localhost:8001/
+    env_file:
+      - ./backend/.env
+    environment:
+      - PYTHONUNBUFFERED=1  # streams are sent straight to terminal
+    depends_on:
+      - database
+    volumes:
+      - chroma_data_volume:/backend/chroma_430_vector_db  # note this should be the same as the one in medibot.py
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  chroma_data_volume:
+  mysql-data:
