@@ -8,6 +8,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the backend code, to the folder /backend (the working directory)
 COPY . /backend/
 
+ENV PYTHONPATH=/backend
+
 # Describe the port inside the container (just for documentation purposes)
 EXPOSE 8000
 

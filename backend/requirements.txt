@@ -8,7 +8,6 @@ asgiref==3.8.1
 asttokens==3.0.0
 attrs==25.3.0
 backoff==2.2.1
-bcrypt==4.3.0
 beautifulsoup4==4.13.3
 build==1.2.2.post1
 cachetools==5.5.2
@@ -159,3 +158,6 @@ xxhash==3.5.0
 yarl==1.19.0
 zipp==3.21.0
 zstandard==0.23.0
+python-jose[cryptography]
+bcrypt==4.0.1
+passlib[bcrypt]

@@ -1,4 +1,5 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
+from fastapi.security import OAuth2PasswordBearer
 from database_connection_service.db_connection import get_connection
 from database_connection_service.classes_input import *
 from datetime import datetime, timedelta
@@ -7,6 +8,8 @@ from langgraph.types import Command
 from langchain_community.document_loaders import PyPDFLoader
 from tempfile import NamedTemporaryFile
 from bot_scheduler_service.schedulerBot import schedulerBotFunction
+from auth_service.auth_routes import router as auth_router   # if main.py sits next to auth_service
+from auth_service.auth_utils import verify_token
 
 # user information
 config = {"configurable": {"thread_id": "1"}}
@@ -14,8 +17,14 @@ config = {"configurable": {"thread_id": "1"}}
 # Graph Initialization, this is just to initialize the states
 h = mediBotRag.invoke(initializeState(), config = config)
 
-
 app = FastAPI()
+
+# Add authentication router
+app.include_router(auth_router, prefix="/auth", tags=["authentication"])
+
+# Dependency for protected routes
+async def get_current_user(token: str = Depends(OAuth2PasswordBearer(tokenUrl="/auth/login"))):
+    return verify_token(token)
 
 @app.get("/")
 def root():
@@ -23,7 +32,9 @@ def root():
 
 # Get Endpoints: 
 @app.get("/getAdmins")
-def get_admins():
+async def get_admins(current_user: dict = Depends(get_current_user)):
+    if current_user["user_type"] != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
     '''Only By Admins'''
     '''
     Documentation: 
@@ -44,7 +55,9 @@ def get_admins():
         connection.close()
 
 @app.get("/getDoctors")
-def get_doctors():
+def get_doctors(current_user: dict = Depends(get_current_user)):
+    if current_user["user_type"] != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
     '''Only By Admins'''
     '''
     Documentation: 
@@ -65,7 +78,9 @@ def get_doctors():
         connection.close()
 
 @app.get("/getPatients")
-def get_patients():
+def get_patients(current_user: dict = Depends(get_current_user)):
+    if current_user["user_type"] != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
     '''Only By Admins'''
     '''
     Documentation: 
@@ -86,7 +101,9 @@ def get_patients():
         connection.close()
 
 @app.get("/getAppointments")
-def get_appointments():
+def get_appointments(current_user: dict = Depends(get_current_user)):
+    if current_user["user_type"] != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
     '''Only By Admins'''
     '''
     Documentation: 
@@ -129,7 +146,9 @@ def getAllAppointmentsForPatient(input: getAllAppointmentsForPatientInput):
         connection.close()
 
 @app.post("/addDoctor")
-def addDoctor(input: addDoctorInput): 
+def addDoctor(input: addDoctorInput, current_user: dict = Depends(get_current_user)):
+    if current_user["user_type"] != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
     '''Only By Admins'''
     '''
     Documentation: 
@@ -155,7 +174,9 @@ def addDoctor(input: addDoctorInput):
         connection.close()
 
 @app.post("/addPatient")
-def addPatient(input: addPatientInput): 
+def addPatient(input: addPatientInput, current_user: dict = Depends(get_current_user)):
+    if current_user["user_type"] != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
     '''Only By Admins'''
     '''
     Documentation: 
@@ -273,7 +294,9 @@ def deleteAppointment(input: deleteAppointmentInput):
 
 # Chatbot Endpoint:
 @app.post("/addPDFToVB")
-async def addDocumentToVB(file: UploadFile = File(description="Upload a PDF file of the document you want to add")):
+async def addDocumentToVB(file: UploadFile = File(description="Upload a PDF file of the document you want to add"), current_user: dict = Depends(get_current_user)):
+    if current_user["user_type"] != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
     '''restricted to admins only'''
     '''
     Documentation: 
