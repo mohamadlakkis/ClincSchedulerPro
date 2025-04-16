@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import "../styles/calender.css";
-
+//we still need to change design and put the doctor name related to this calendar
 const Calendar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [currentWeek, setCurrentWeek] = useState(0);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -12,7 +13,7 @@ const Calendar = () => {
   const [blueAppointments, setBlueAppointments] = useState([]);
   const [redAppointments, setRedAppointments] = useState([]);
   const PATIENT_ID = "0000001";
-  const DOCTOR_ID = "0000001"; 
+  const DOCTOR_ID = location.state?.doctorId;
 
   const timeSlots = Array.from({ length: 18 }, (_, i) => {
     const totalMinutes = 9 * 60 + i * 30; 
