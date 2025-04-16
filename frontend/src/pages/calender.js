@@ -1,143 +1,73 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import "../styles/calender.css";
-
+//we still need to change design and put the doctor name related to this calendar
 const Calendar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [currentWeek, setCurrentWeek] = useState(0);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [appointments, setAppointments] = useState([]);
-  const PATIENT_ID = "0000001"; // Constant for patient ID
-  const DOCTOR_ID = "000001"; // Constant for doctor ID
+  const [blueAppointments, setBlueAppointments] = useState([]);
+  const [redAppointments, setRedAppointments] = useState([]);
+  const PATIENT_ID = "0000001";
+  const DOCTOR_ID = location.state?.doctorId;
 
-  // Generate time slots from 9 AM to 6 PM in 30-minute intervals
   const timeSlots = Array.from({ length: 18 }, (_, i) => {
-    const hour = Math.floor(i / 2) + 9;
-    const minutes = (i % 2) * 30;
-    return `${hour.toString().padStart(2, "0")}:${minutes
-      .toString()
-      .padStart(2, "0")}`;
+    const totalMinutes = 9 * 60 + i * 30; 
+    const hour = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return {
+      index: i, 
+      display: `${hour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}` 
+    };
   });
 
-  // Function to check if a slot is booked by the current patient
-  const isSlotBookedByPatient = (date, time) => {
-    return appointments.some(
+  const isSlotBookedByPatient = (date, slotIndex) => {
+    return blueAppointments.some(
       (appointment) =>
         appointment.Date === date &&
-        appointment.StartTime === time &&
-        appointment.PatientID === PATIENT_ID
+        appointment.StartTime === slotIndex
     );
   };
 
-  // Function to check if a slot is booked by other patients
-  const isSlotBookedByOthers = (date, time) => {
-    return appointments.some(
+  const isSlotBookedByOthers = (date, slotIndex) => {
+    return redAppointments.some(
       (appointment) =>
         appointment.Date === date &&
-        appointment.StartTime === time &&
-        appointment.PatientID !== PATIENT_ID
+        appointment.StartTime === slotIndex
     );
   };
 
-  // Function to handle slot click
-  const handleSlotClick = (date, time) => {
+  const handleSlotClick = (date, slotIndex) => {
     if (isPastDate(date)) return;
-
-    const isBookedByPatient = isSlotBookedByPatient(formatDate(date), time);
-    const isBookedByOthers = isSlotBookedByOthers(formatDate(date), time);
-
+  
+    const formattedDate = formatDate(date);
+    const isBookedByPatient = isSlotBookedByPatient(formattedDate, slotIndex);
+    const isBookedByOthers = isSlotBookedByOthers(formattedDate, slotIndex);
+  
     if (isBookedByPatient) {
-      // If it's the patient's own booking, show cancel modal
-      setSelectedSlot({ date: formatDate(date), time });
+      setSelectedSlot({ date: formattedDate, time: slotIndex });
       setShowCancelModal(true);
     } else if (!isBookedByOthers) {
-      // If it's not booked by anyone, show booking modal
-      setSelectedSlot({ date: formatDate(date), time });
+      setSelectedSlot({ date: formattedDate, time: slotIndex });
       setShowBookingModal(true);
     }
-    // If it's booked by others, do nothing
   };
-
-  // Function to handle booking
-  const handleBooking = () => {
-    if (!selectedSlot) return;
-
-    const newAppointment = {
-      PatientID: PATIENT_ID,
-      DoctorID: DOCTOR_ID,
-      Date: selectedSlot.date,
-      StartTime: selectedSlot.time,
-      EndTime: add30Minutes(selectedSlot.time),
-    };
-
-    setAppointments([...appointments, newAppointment]);
-    setShowBookingModal(false);
-    setSelectedSlot(null);
-  };
-
-  // Function to handle appointment cancellation
-  const handleCancelAppointment = () => {
-    if (!selectedSlot) return;
-
-    // Find the appointment to be cancelled
-    const appointmentToCancel = appointments.find(
-      (appointment) =>
-        appointment.Date === selectedSlot.date &&
-        appointment.StartTime === selectedSlot.time
-    );
-
-    // Check if the appointment exists and belongs to the current patient
-    if (appointmentToCancel && appointmentToCancel.PatientID === PATIENT_ID) {
-      // This is where you would make the DELETE API call in the future
-      // DELETE FROM appointments
-      // WHERE Date = selectedSlot.date
-      // AND StartTime = selectedSlot.time
-      // AND PatientID = PATIENT_ID
-
-      // For now, we'll just update the local state
-      const updatedAppointments = appointments.filter(
-        (appointment) =>
-          !(
-            appointment.Date === selectedSlot.date &&
-            appointment.StartTime === selectedSlot.time &&
-            appointment.PatientID === PATIENT_ID
-          )
-      );
-
-      setAppointments(updatedAppointments);
-      setShowCancelModal(false);
-      setSelectedSlot(null);
-    } else {
-      // If the appointment doesn't exist or doesn't belong to the current patient
-      alert("You can only cancel your own appointments.");
-      setShowCancelModal(false);
-      setSelectedSlot(null);
-    }
-  };
-
-  // Helper function to add 30 minutes to a time string
-  const add30Minutes = (time) => {
-    const [hours, minutes] = time.split(":").map(Number);
-    const date = new Date();
-    date.setHours(hours, minutes + 30, 0);
-    return `${date.getHours().toString().padStart(2, "0")}:${date
-      .getMinutes()
-      .toString()
-      .padStart(2, "0")}`;
-  };
+  
 
   // Function to generate week days
-  const generateWeekDays = () => {
+  const generateWeekDays = useCallback(() => {
     const today = new Date();
     const currentDay = today.getDay();
     const monday = new Date(today);
     monday.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
-
+    
     const targetMonday = new Date(monday);
-    targetMonday.setDate(monday.getDate() + currentWeek * 7);
-
+    targetMonday.setDate(monday.getDate() + (currentWeek * 7));
+    
     const days = [];
     for (let i = 0; i < 5; i++) {
       const date = new Date(targetMonday);
@@ -145,6 +75,135 @@ const Calendar = () => {
       days.push(date);
     }
     return days;
+  }, [currentWeek]);
+
+  // Function to fetch appointments for the current week
+  const fetchAppointments = useCallback(async () => {
+    const weekDays = generateWeekDays();
+    const startDate = formatDate(weekDays[0]);
+    console.log('Fetching appointments for date:', startDate);
+
+    try {
+      const response = await fetch('http://localhost:8001/showOneDoctorAllPatients', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          DoctorId: DOCTOR_ID,
+          PatientId: PATIENT_ID,
+          Date: startDate
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch appointments');
+      }
+
+      const data = await response.json();
+      console.log('Raw API response:', data);
+      
+      // Process blue appointments (patient's own appointments)
+      const processedBlueAppointments = data.appointments_in_blue.map(([Date, StartTime]) => ({
+        Date,
+        StartTime
+      }));
+      console.log('Processed blue appointments:', processedBlueAppointments);
+      // Process red appointments (other patients' appointments)
+      const processedRedAppointments = data.appointments_in_red.map(([Date, StartTime]) => ({
+        Date,
+        StartTime
+      }));
+      console.log('Processed red appointments:', processedRedAppointments);
+
+      setBlueAppointments(processedBlueAppointments);
+      setRedAppointments(processedRedAppointments);
+      
+      // Log the current state after update
+      console.log('Updated state - Blue appointments:', processedBlueAppointments);
+      console.log('Updated state - Red appointments:', processedRedAppointments);
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+    }
+  }, [DOCTOR_ID, PATIENT_ID, generateWeekDays]);
+
+  // Fetch appointments when component mounts and when week changes
+  useEffect(() => {
+    fetchAppointments();
+  }, [fetchAppointments]);
+
+  // Function to handle booking
+  const handleBooking = async () => {
+    if (!selectedSlot) return;
+    
+    try {
+      const requestData = {
+        DoctorId: parseInt(DOCTOR_ID, 10), // Convert to integer
+        PatientId: parseInt(PATIENT_ID, 10), // Convert to integer
+        Date: selectedSlot.date,
+        startTime: selectedSlot.time,
+        feedback: ''
+      };
+
+      const response = await fetch('http://localhost:8001/insertAppointment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to book appointment');
+      }
+
+      // Show success message
+      alert('Appointment booked successfully!');
+      
+      // Fetch updated appointments
+      await fetchAppointments();
+      
+      // Close the modal and reset selected slot
+      setShowBookingModal(false);
+      setSelectedSlot(null);
+    } catch (error) {
+      console.error('Booking error:', error);
+      alert(`Error booking appointment: ${error.message}`);
+    }
+  };
+
+  // Function to handle appointment cancellation
+  const handleCancelAppointment = async () => {
+    if (!selectedSlot) return;
+
+    try {
+      const response = await fetch('http://localhost:8001/deleteAppointment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          DoctorId: parseInt(DOCTOR_ID, 10),
+          PatientId: parseInt(PATIENT_ID, 10),
+          Date: selectedSlot.date,
+          startTime: selectedSlot.time // This is now the slot index
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to cancel appointment');
+      }
+
+      // Refresh appointments after successful cancellation
+      await fetchAppointments();
+      setShowCancelModal(false);
+      setSelectedSlot(null);
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
   // Function to format date as YYYY-MM-DD
@@ -227,9 +286,9 @@ const Calendar = () => {
         <div className="calendar-grid">
           <div className="time-column">
             <div className="time-header">Time</div>
-            {timeSlots.map((time) => (
-              <div key={time} className="time-slot">
-                {time}
+            {timeSlots.map((slot) => (
+              <div key={slot.index} className="time-slot">
+                {slot.display}  
               </div>
             ))}
           </div>
@@ -246,35 +305,43 @@ const Calendar = () => {
                   day: "numeric",
                 })}
               </div>
-              {timeSlots.map((time) => {
-                const isBookedByPatient = isSlotBookedByPatient(
-                  formatDate(day),
-                  time
-                );
-                const isBookedByOthers = isSlotBookedByOthers(
-                  formatDate(day),
-                  time
-                );
+              {timeSlots.map((slot) => {
+                const formattedDate = formatDate(day);
+                const isBookedByPatient = isSlotBookedByPatient(formattedDate, slot.index);
+                const isBookedByOthers = isSlotBookedByOthers(formattedDate, slot.index);
                 const isPast = isPastDate(day);
+
+                 console.log(`Slot ${slot.index} on ${formattedDate}:`, {
+
+                  isBookedByPatient,
+                  isBookedByOthers,
+                  isPast,
+                  appointments: appointments.filter(a => a.Date === formattedDate && a.StartTime === slot.index)
+                });
+
+                let slotClass = "time-slot";
+                if (isPast) {
+                  slotClass += " past-slot";
+                } else if (isBookedByPatient) {
+                  slotClass += " user-booked";
+                } else if (isBookedByOthers) {
+                  slotClass += " booked";
+                } else {
+                  slotClass += " available";
+                }
 
                 return (
                   <div
-                    key={`${day.toISOString()}-${time}`}
-                    className={`time-slot ${
-                      isPast
-                        ? ""
-                        : isBookedByPatient
-                        ? "user-booked"
-                        : isBookedByOthers
-                        ? "booked"
-                        : "available"
-                    }`}
-                    onClick={() => handleSlotClick(day, time)}
+                    key={`${day.toISOString()}-${slot.index}`}
+                    className={slotClass}
+                    onClick={() => handleSlotClick(day, slot.index)}
                   >
                     {isBookedByPatient
                       ? "Your Booking"
                       : isBookedByOthers
                       ? "Booked"
+                      : isPast
+                      ? "Past"
                       : "Available"}
                   </div>
                 );

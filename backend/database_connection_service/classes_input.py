@@ -28,8 +28,7 @@ class addAppointmentInput(BaseModel):
 class showOneDoctorAllPatientsInput(BaseModel): 
     DoctorId: int   
     Date: str
-    PatienId: int
-
+    PatientId: int
 
 class deleteAppointmentInput(BaseModel): 
     PatientId: int
