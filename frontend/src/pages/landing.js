@@ -5,37 +5,103 @@ import NavBar from "../components/NavBar";
 
 function Landing() {
   const navigate = useNavigate();
-  const [currentFeature, setCurrentFeature] = useState(0);
+  const [upcomingAppointments, setUpcomingAppointments] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeFeature, setActiveFeature] = useState(0);
   const features = [
     {
-      title: "Smart Scheduling",
-      description:
-        "AI-powered appointment management that adapts to your needs",
-      icon: "📅",
+      title: "AI-Powered Medical Assistant",
+      description: "Get instant answers to your medical questions with our advanced AI assistant.",
+      icon: "🤖"
     },
     {
-      title: "Medical Assistant",
-      description: "Get instant answers to your medical questions",
-      icon: "🤖",
+      title: "Smart Appointment Scheduling",
+      description: "Book appointments through natural conversation with our scheduling assistant.",
+      icon: "📅"
     },
     {
-      title: "Schedule Assistant",
-      description: "Book appointments through natural conversation",
-      icon: "💬",
+      title: "Real-time Calendar View",
+      description: "View and manage your appointments in a user-friendly calendar interface.",
+      icon: "📊"
     },
     {
-      title: "Task Management",
-      description: "Keep track of your medical tasks and appointments",
-      icon: "✅",
-    },
+      title: "Secure Patient Portal",
+      description: "Access your medical information and manage your healthcare needs securely.",
+      icon: "🔒"
+    }
   ];
 
   useEffect(() => {
+    const fetchAppointments = async () => {
+      try {
+        const response = await fetch("http://localhost:8001/getAllAppointmentsForPatient", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            PatientId: localStorage.getItem("userId")
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch appointments");
+        }
+
+        const data = await response.json();
+        
+        // Filter appointments for the next month and sort by date and time
+        const now = new Date();
+        const nextMonth = new Date(now);
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        
+        const filteredAppointments = data.appointments
+          .filter(appointment => {
+            const appointmentDate = new Date(appointment.Date);
+            return appointmentDate >= now && appointmentDate <= nextMonth;
+          })
+          .sort((a, b) => {
+            const dateA = new Date(a.Date);
+            const dateB = new Date(b.Date);
+            if (dateA.getTime() === dateB.getTime()) {
+              return a.startTime - b.startTime;
+            }
+            return dateA.getTime() - dateB.getTime();
+          });
+
+        setUpcomingAppointments(filteredAppointments);
+      } catch (error) {
+        console.error("Error fetching appointments:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAppointments();
+  }, []);
+
+  useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentFeature((prev) => (prev + 1) % features.length);
+      setActiveFeature((prev) => (prev + 1) % features.length);
     }, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  const formatTime = (startTime) => {
+    const hour = Math.floor(startTime / 2) + 9;
+    const minutes = (startTime % 2) * 30;
+    return `${hour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
 
   return (
     <div className="app-container">
@@ -51,33 +117,40 @@ function Landing() {
         </header>
 
         <main className="landing-main">
-          <section className="hero-section">
-            <div className="feature-display">
-              <div className="feature-card">
-                <span className="feature-icon">
-                  {features[currentFeature].icon}
-                </span>
-                <h2>{features[currentFeature].title}</h2>
-                <p>{features[currentFeature].description}</p>
-              </div>
+          <section className="feature-display">
+            <div className="feature-card">
+              <div className="feature-icon">{features[activeFeature].icon}</div>
+              <h2>{features[activeFeature].title}</h2>
+              <p>{features[activeFeature].description}</p>
             </div>
           </section>
 
-          <section className="features-section">
-            <div className="features-grid">
-              {features.map((feature, index) => (
-                <div
-                  key={index}
-                  className={`feature-item ${
-                    currentFeature === index ? "active" : ""
-                  }`}
-                  onClick={() => setCurrentFeature(index)}
-                >
-                  <span className="feature-icon">{feature.icon}</span>
-                  <h3>{feature.title}</h3>
-                  <p>{feature.description}</p>
+          <section className="appointments-section">
+            <div className="appointments-card">
+              <h2>Your Upcoming Appointments</h2>
+              {isLoading ? (
+                <div className="loading-message">Loading appointments...</div>
+              ) : upcomingAppointments.length > 0 ? (
+                <div className="appointments-list">
+                  {upcomingAppointments.map((appointment, index) => (
+                    <div key={index} className="appointment-item">
+                      <div className="appointment-date">
+                        {formatDate(appointment.Date)}
+                      </div>
+                      <div className="appointment-time">
+                        {formatTime(appointment.startTime)}
+                      </div>
+                      <div className="appointment-doctor">
+                        Doctor ID: {appointment.DoctorId}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <div className="no-appointments">
+                  You don't have any appointments scheduled for the next month.
+                </div>
+              )}
             </div>
           </section>
 

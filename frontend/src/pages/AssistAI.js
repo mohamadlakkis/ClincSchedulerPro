@@ -1,22 +1,37 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import '../styles/AssistAI.css';
+import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import "../styles/AssistAI.css";
 
 function AssistAI() {
   const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
 
+  // Load messages from localStorage when component mounts
   useEffect(() => {
-    // Add welcome message when component mounts
-    setMessages([{
-      text: "Hello! I'm MediBot, your medical assistant. I can help you with medical questions and provide health information. How can I assist you today?",
-      sender: 'bot',
-      time: getCurrentTime()
-    }]);
+    const savedMessages = localStorage.getItem(`mediBotChat_${localStorage.getItem("userId")}`);
+    if (savedMessages) {
+      setMessages(JSON.parse(savedMessages));
+    } else {
+      // Add welcome message only if no saved messages exist
+      setMessages([
+        {
+          text: "Hello! I'm MediBot, your medical assistant. I can help you with medical questions and provide health information. How can I assist you today?",
+          sender: "bot",
+          time: getCurrentTime(),
+        },
+      ]);
+    }
   }, []);
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem(`mediBotChat_${localStorage.getItem("userId")}`, JSON.stringify(messages));
+    }
+  }, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -27,7 +42,10 @@ function AssistAI() {
   }, [messages]);
 
   const getCurrentTime = () => {
-    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -37,55 +55,68 @@ function AssistAI() {
     // Add user message
     const userMessage = {
       text: input,
-      sender: 'user',
-      time: getCurrentTime()
+      sender: "user",
+      time: getCurrentTime(),
     };
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
     setIsTyping(true);
 
     try {
-      const response = await fetch('http://localhost:8001/mediBot', {
-        method: 'POST',
+      const response = await fetch("http://localhost:8001/mediBotRagEndpoint", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          question: input
+          userQuestions: input,
+          PatientId: parseInt(localStorage.getItem("userId") || "0"),
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response from MediBot');
+        throw new Error("Failed to get response from MediBot");
       }
 
       const data = await response.json();
-      
+
       setTimeout(() => {
         const botResponse = {
-          text: data.response,
-          sender: 'bot',
-          time: getCurrentTime()
+          text: data.answer,
+          sender: "bot",
+          time: getCurrentTime(),
         };
-        setMessages(prev => [...prev, botResponse]);
+        setMessages((prev) => [...prev, botResponse]);
         setIsTyping(false);
       }, 1000);
     } catch (error) {
-      console.error('Error:', error);
+      console.error("Error:", error);
       const errorResponse = {
         text: "I'm sorry, there was an error processing your request. Please try again.",
-        sender: 'bot',
-        time: getCurrentTime()
+        sender: "bot",
+        time: getCurrentTime(),
       };
-      setMessages(prev => [...prev, errorResponse]);
+      setMessages((prev) => [...prev, errorResponse]);
       setIsTyping(false);
     }
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       handleSubmit(e);
     }
+  };
+
+  // Add clear chat functionality
+  const clearChat = () => {
+    localStorage.removeItem(`mediBotChat_${localStorage.getItem("userId")}`);
+    setMessages([
+      {
+        text: "Hello! I'm MediBot, your medical assistant. I can help you with medical questions and provide health information. How can I assist you today?",
+        sender: "bot",
+        time: getCurrentTime(),
+      },
+    ]);
   };
 
   return (
@@ -93,6 +124,9 @@ function AssistAI() {
       <header className="chat-header">
         <h1>MediBot</h1>
         <p>Your AI-powered medical assistant</p>
+        <button onClick={clearChat} className="clear-chat-button">
+          Clear Chat
+        </button>
       </header>
 
       <div className="chat-messages">
@@ -126,8 +160,8 @@ function AssistAI() {
           className="chat-input"
           disabled={isTyping}
         />
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           className="send-button"
           disabled={isTyping || !input.trim()}
         >
@@ -136,12 +170,15 @@ function AssistAI() {
       </form>
 
       <footer className="chat-footer">
-        <button onClick={() => navigate('/calender')} className="nav-button">Go to Calendar</button>
-        <button onClick={() => navigate('/')} className="nav-button">Go back home</button>
+        <button onClick={() => navigate("/calender")} className="nav-button">
+          Go to Calendar
+        </button>
+        <button onClick={() => navigate("/")} className="nav-button">
+          Go back home
+        </button>
       </footer>
     </div>
   );
 }
 
 export default AssistAI;
-
