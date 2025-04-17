@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.middleware.cors import CORSMiddleware
 from database_connection_service.db_connection import get_connection
 from database_connection_service.classes_input import *
 from datetime import datetime, timedelta
@@ -22,7 +23,7 @@ h = mediBotRag.invoke(initializeState(), config = config)
 
 
 app = FastAPI()
-
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 ### Security ###
 security = HTTPBearer()
 def decode_token(token):
@@ -30,8 +31,8 @@ def decode_token(token):
     return payload['sub']
 def create_token(user_id):
     payload = {
-        'exp': datetime.datetime.now() + datetime.timedelta(days=4),
-        'iat': datetime.datetime.now(),
+        'exp': datetime.now() + timedelta(days=4),
+        'iat': datetime.now(),
         'sub': str(user_id)
     }
     return jwt.encode(
