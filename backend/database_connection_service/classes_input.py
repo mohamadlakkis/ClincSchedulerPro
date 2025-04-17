@@ -17,6 +17,7 @@ class addPatientInput(BaseModel):
     Password: str
 
 class addAppointmentInput(BaseModel):
+    DoctorId: int
     PatientId: int 
     Date: str = "2023-10-01"
     startTime: int = 1
