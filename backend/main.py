@@ -1,4 +1,5 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from database_connection_service.db_connection import get_connection
 from database_connection_service.classes_input import *
 from datetime import datetime, timedelta
@@ -7,10 +8,18 @@ from langgraph.types import Command
 from langchain_community.document_loaders import PyPDFLoader
 from tempfile import NamedTemporaryFile
 from bot_scheduler_service.schedulerBot import schedulerBotFunction
+<<<<<<< HEAD
 from fastapi.middleware.cors import CORSMiddleware
+=======
+from auth.classesInput import loginInput, SignUpPatient, SignUpDoctor
+from auth.extensions import check_password_hash, generate_password_hash
+import os
+import jwt
+>>>>>>> origin/backend
 
 # user information
 config = {"configurable": {"thread_id": "1"}}
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 # Graph Initialization, this is just to initialize the states
 h = mediBotRag.invoke(initializeState(), config = config)
@@ -18,6 +27,7 @@ h = mediBotRag.invoke(initializeState(), config = config)
 
 app = FastAPI()
 
+<<<<<<< HEAD
 # Add CORS middleware to allow OPTIONS requests
 app.add_middleware(
     CORSMiddleware,
@@ -26,6 +36,256 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all HTTP methods, including OPTIONS
     allow_headers=["*"],
 )
+=======
+### Security ###
+security = HTTPBearer()
+def decode_token(token):
+    payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
+    return payload['sub']
+def create_token(user_id):
+    payload = {
+        'exp': datetime.datetime.now() + datetime.timedelta(days=4),
+        'iat': datetime.datetime.now(),
+        'sub': str(user_id)
+    }
+    return jwt.encode(
+        payload,
+        SECRET_KEY,
+        algorithm='HS256'
+    )
+def get_current_user(token: HTTPAuthorizationCredentials = Depends(security)):
+    '''Wrote this here as a function to simplify the code, and avoid repetition of the try/except block'''
+    '''This function will be used as a dependency in the endpoints that require authentication'''
+    '''If the token is valid, get_current_user decodes it and returns the user_id'''
+    try:
+        # token.credentials contains the token string from the header.
+        user_id = decode_token(token.credentials)
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Token expired"
+        )
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="Invalid token"
+        )
+    return user_id
+
+@app.post("/loginAdmin")
+def loginAdmin(auth_request: loginInput):
+    """
+    Authenticate a user and return a JWT token (lasts 4 days).
+    This endpoint is used to log in a user. It takes an email and password 
+    For now I am assuming all users are the same, so no difference between admins, doctors, and patients, I will modify it later!
+    For now I am only accepting users as patients 
+    """
+    connection = get_connection()
+    if connection is None:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    try:
+        cursor = connection.cursor(dictionary=True)
+        tables = ["Admin"] # ["Admins", "Doctors", "Patients"]
+        user = None
+        user_type = None
+        for table in tables:
+            print(f"Checking table: {table}")
+            cursor.execute(
+                f"SELECT * FROM {table} WHERE Email = %s", (auth_request.email,))
+            user = cursor.fetchone()
+            print(f"User found: {user}")
+            if user:
+                user_type = table
+                break
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="User not found"
+            )
+        if user['password'] != auth_request.password:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Incorrect password"
+            )
+        # # Check if the provided password matches the hashed password in the database
+        # if not check_password_hash(generate_password_hash(user['Password']), auth_request.password):
+        #     raise HTTPException(
+        #         status_code=status.HTTP_403_FORBIDDEN,
+        #         detail="Incorrect password"
+        #     )
+        # token = create_token(user['UserId']) # create for this user_id a token, that lasts 4 days!
+        token = "still testing"
+        return {"token": token, "user_type": user_type, "adminEmail": user['email']}
+    except Exception as e:  
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        connection.close()
+
+@app.post("/loginDoctor")
+def loginDoctor(auth_request: loginInput):
+    """
+    Authenticate a user and return a JWT token (lasts 4 days).
+    This endpoint is used to log in a user. It takes an email and password 
+    For now I am assuming all users are the same, so no difference between admins, doctors, and patients, I will modify it later!
+    For now I am only accepting users as patients 
+    """
+    connection = get_connection()
+    if connection is None:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    try:
+        cursor = connection.cursor(dictionary=True)
+        tables = ["Doctors"] # ["Admins", "Doctors", "Patients"]
+        user = None
+        user_type = None
+        for table in tables:
+            print(f"Checking table: {table}")
+            cursor.execute(
+                f"SELECT * FROM {table} WHERE Email = %s", (auth_request.email,))
+            user = cursor.fetchone()
+            print(f"User found: {user}")
+            if user:
+                user_type = table
+                break
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="User not found"
+            )
+        if user['Password'] != auth_request.password:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Incorrect password"
+            )
+        # # Check if the provided password matches the hashed password in the database
+        # if not check_password_hash(generate_password_hash(user['Password']), auth_request.password):
+        #     raise HTTPException(
+        #         status_code=status.HTTP_403_FORBIDDEN,
+        #         detail="Incorrect password"
+        #     )
+        # token = create_token(user['UserId']) # create for this user_id a token, that lasts 4 days!
+        token = "still testing"
+        return {"token": token, "user_type": user_type, "DoctorId": user['DoctorId']}
+    except Exception as e:  
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        connection.close()
+
+@app.post("/loginPatient")
+def loginPatient(auth_request: loginInput):
+    """
+    Authenticate a user and return a JWT token (lasts 4 days).
+    This endpoint is used to log in a user. It takes an email and password 
+    For now I am assuming all users are the same, so no difference between admins, doctors, and patients, I will modify it later!
+    For now I am only accepting users as patients 
+    """
+    connection = get_connection()
+    if connection is None:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    try:
+        cursor = connection.cursor(dictionary=True)
+        tables = ["Patients"] # ["Admins", "Doctors", "Patients"]
+        user = None
+        user_type = None
+        for table in tables:
+            print(f"Checking table: {table}")
+            cursor.execute(
+                f"SELECT * FROM {table} WHERE Email = %s", (auth_request.email,))
+            user = cursor.fetchone()
+            print(f"User found: {user}")
+            if user:
+                user_type = table
+                break
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="User not found"
+            )
+        if user['Password'] != auth_request.password:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Incorrect password"
+            )
+        # # Check if the provided password matches the hashed password in the database
+        # if not check_password_hash(generate_password_hash(user['Password']), auth_request.password):
+        #     raise HTTPException(
+        #         status_code=status.HTTP_403_FORBIDDEN,
+        #         detail="Incorrect password"
+        #     )
+        # token = create_token(user['UserId']) # create for this user_id a token, that lasts 4 days!
+        token = "still testing"
+        return {"token": token, "user_type": user_type, "PatientId": user['PatientId']}
+    except Exception as e:  
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        connection.close()
+
+@app.post("/registerPatient")
+def registerPatient(auth_register: SignUpPatient):
+    connection = get_connection()
+    if connection is None:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    try:
+        cursor = connection.cursor(dictionary=True)
+        # Check if the email already exists in the Patients table
+        print("hello")
+        cursor.execute("SELECT * FROM Patients WHERE Email = %s", (auth_register.Email,))
+        print("hello2")
+        existing_user = cursor.fetchone()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already exists"
+            )
+        # Insert the new user into the Patients table
+        query = """
+            INSERT INTO Patients (PatientName, PatientInfo, PatientAge, Gender, Email, Password)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """
+        # values = (auth_register.PatientId,auth_register.PatientName, auth_register.PatientInfo, auth_register.PatientAge, auth_register.Gender, auth_register.Email, generate_password_hash(auth_register.Password))
+        values = (auth_register.PatientName, auth_register.PatientInfo, auth_register.PatientAge, auth_register.Gender, auth_register.Email, auth_register.Password) 
+        cursor.execute(query, values)
+        connection.commit()
+        return {"message": "patient registered successfully"}
+    except Exception as e:  
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        connection.close()
+
+@app.post("/registerDoctor")
+def registerDoctor(auth_register: SignUpDoctor):
+    connection = get_connection()
+    if connection is None:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    try:
+        cursor = connection.cursor(dictionary=True)
+        # Check if the email already exists in the Doctors table
+        cursor.execute("SELECT * FROM Doctors WHERE Email = %s", (auth_register.Email,))
+        existing_user = cursor.fetchone()
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already exists"
+            )
+        # Insert the new user into the Doctors table
+        query = """
+            INSERT INTO Doctors (DoctorName, DoctorInfo, DoctorSpecialty, Email, Password)
+            VALUES (%s, %s, %s, %s, %s)
+        """
+        # values = (auth_register.DoctorId, auth_register.DoctorName, auth_register.DoctorInfo, auth_register.DoctorSpecialty, auth_register.Email, generate_password_hash(auth_register.Password))
+        values = (auth_register.DoctorName, auth_register.DoctorInfo, auth_register.DoctorSpecialty, auth_register.Email, auth_register.Password) 
+        cursor.execute(query, values)
+        connection.commit()
+        return {"message": "Doctor registered successfully"}
+    except Exception as e:  
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        connection.close()
+>>>>>>> origin/backend
 
 @app.get("/")
 def root():
@@ -151,10 +411,10 @@ def addDoctor(input: addDoctorInput):
     try:
         cursor = connection.cursor()
         query = """
-            INSERT INTO Doctors (DoctorId, DoctorName, DoctorInfo, DoctorSpecialty, Email, Password)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO Doctors (DoctorName, DoctorInfo, DoctorSpecialty, Email, Password)
+            VALUES (%s, %s, %s, %s, %s)
         """
-        values = (input.DoctorId, input.DoctorName, input.DoctorInfo, input.DoctorSpecialty, input.Email, input.Password)
+        values = (input.DoctorName, input.DoctorInfo, input.DoctorSpecialty, input.Email, input.Password)
         cursor.execute(query, values)
         connection.commit()
         return {"message": "Doctor added successfully"}
@@ -177,10 +437,10 @@ def addPatient(input: addPatientInput):
     try:
         cursor = connection.cursor()
         query = """
-            INSERT INTO Patients (PatientId, PatientName, PatientInfo, PatientAge, Gender, Email, Password)
-            VALUES ( %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO Patients ( PatientName, PatientInfo, PatientAge, Gender, Email, Password)
+            VALUES ( %s, %s, %s, %s, %s, %s)
         """
-        values = (input.PatientId, input.PatientName, input.PatientInfo, input.PatientAge, input.Gender, input.Email, input.Password)
+        values = (input.PatientName, input.PatientInfo, input.PatientAge, input.Gender, input.Email, input.Password)
         cursor.execute(query, values)
         connection.commit()
         return {"message": "Patient added successfully"}
