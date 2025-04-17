@@ -2,7 +2,6 @@ from pydantic import BaseModel
 
 
 class SignUpPatient(BaseModel): 
-    PatientId: str
     PatientName: str
     PatientInfo: str | None
     PatientAge: int
@@ -11,7 +10,6 @@ class SignUpPatient(BaseModel):
     Password: str
 
 class SignUpDoctor(BaseModel):
-    DoctorId: str
     DoctorName: str
     DoctorInfo: str | None
     DoctorSpecialty: str

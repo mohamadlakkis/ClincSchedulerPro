@@ -26,7 +26,8 @@ services:
       - chroma_data_volume:/backend/chroma_430_vector_db  # note this should be the same as the one in medibot.py
     networks:
       - app-network
-
+    restart: on-failure
+    
 networks:
   app-network:
     driver: bridge

@@ -58,6 +58,56 @@ def get_current_user(token: HTTPAuthorizationCredentials = Depends(security)):
         )
     return user_id
 
+@app.post("/loginAdmin")
+def loginAdmin(auth_request: loginInput):
+    """
+    Authenticate a user and return a JWT token (lasts 4 days).
+    This endpoint is used to log in a user. It takes an email and password 
+    For now I am assuming all users are the same, so no difference between admins, doctors, and patients, I will modify it later!
+    For now I am only accepting users as patients 
+    """
+    connection = get_connection()
+    if connection is None:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    try:
+        cursor = connection.cursor(dictionary=True)
+        tables = ["Admin"] # ["Admins", "Doctors", "Patients"]
+        user = None
+        user_type = None
+        for table in tables:
+            print(f"Checking table: {table}")
+            cursor.execute(
+                f"SELECT * FROM {table} WHERE Email = %s", (auth_request.email,))
+            user = cursor.fetchone()
+            print(f"User found: {user}")
+            if user:
+                user_type = table
+                break
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="User not found"
+            )
+        if user['password'] != auth_request.password:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Incorrect password"
+            )
+        # # Check if the provided password matches the hashed password in the database
+        # if not check_password_hash(generate_password_hash(user['Password']), auth_request.password):
+        #     raise HTTPException(
+        #         status_code=status.HTTP_403_FORBIDDEN,
+        #         detail="Incorrect password"
+        #     )
+        # token = create_token(user['UserId']) # create for this user_id a token, that lasts 4 days!
+        token = "still testing"
+        return {"token": token, "user_type": user_type, "adminEmail": user['email']}
+    except Exception as e:  
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        connection.close()
+
 @app.post("/loginDoctor")
 def loginDoctor(auth_request: loginInput):
     """
@@ -157,7 +207,7 @@ def loginPatient(auth_request: loginInput):
     finally:
         cursor.close()
         connection.close()
-    
+
 @app.post("/registerPatient")
 def registerPatient(auth_register: SignUpPatient):
     connection = get_connection()
@@ -177,11 +227,11 @@ def registerPatient(auth_register: SignUpPatient):
             )
         # Insert the new user into the Patients table
         query = """
-            INSERT INTO Patients (PatientId,PatientName, PatientInfo, PatientAge, Gender, Email, Password)
-            VALUES (%s,%s, %s, %s, %s, %s, %s)
+            INSERT INTO Patients (PatientName, PatientInfo, PatientAge, Gender, Email, Password)
+            VALUES (%s, %s, %s, %s, %s, %s)
         """
         # values = (auth_register.PatientId,auth_register.PatientName, auth_register.PatientInfo, auth_register.PatientAge, auth_register.Gender, auth_register.Email, generate_password_hash(auth_register.Password))
-        values = (auth_register.PatientId,auth_register.PatientName, auth_register.PatientInfo, auth_register.PatientAge, auth_register.Gender, auth_register.Email, auth_register.Password) 
+        values = (auth_register.PatientName, auth_register.PatientInfo, auth_register.PatientAge, auth_register.Gender, auth_register.Email, auth_register.Password) 
         cursor.execute(query, values)
         connection.commit()
         return {"message": "patient registered successfully"}
@@ -208,11 +258,11 @@ def registerDoctor(auth_register: SignUpDoctor):
             )
         # Insert the new user into the Doctors table
         query = """
-            INSERT INTO Doctors (DoctorId,DoctorName, DoctorInfo, DoctorSpecialty, Email, Password)
-            VALUES (%s,%s, %s, %s, %s, %s)
+            INSERT INTO Doctors (DoctorName, DoctorInfo, DoctorSpecialty, Email, Password)
+            VALUES (%s, %s, %s, %s, %s)
         """
         # values = (auth_register.DoctorId, auth_register.DoctorName, auth_register.DoctorInfo, auth_register.DoctorSpecialty, auth_register.Email, generate_password_hash(auth_register.Password))
-        values = (auth_register.DoctorId, auth_register.DoctorName, auth_register.DoctorInfo, auth_register.DoctorSpecialty, auth_register.Email, auth_register.Password) 
+        values = (auth_register.DoctorName, auth_register.DoctorInfo, auth_register.DoctorSpecialty, auth_register.Email, auth_register.Password) 
         cursor.execute(query, values)
         connection.commit()
         return {"message": "Doctor registered successfully"}
@@ -221,6 +271,7 @@ def registerDoctor(auth_register: SignUpDoctor):
     finally:
         cursor.close()
         connection.close()
+
 @app.get("/")
 def root():
     return {"message": "Hello, World!"}
@@ -345,10 +396,10 @@ def addDoctor(input: addDoctorInput):
     try:
         cursor = connection.cursor()
         query = """
-            INSERT INTO Doctors (DoctorId, DoctorName, DoctorInfo, DoctorSpecialty, Email, Password)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO Doctors (DoctorName, DoctorInfo, DoctorSpecialty, Email, Password)
+            VALUES (%s, %s, %s, %s, %s)
         """
-        values = (input.DoctorId, input.DoctorName, input.DoctorInfo, input.DoctorSpecialty, input.Email, input.Password)
+        values = (input.DoctorName, input.DoctorInfo, input.DoctorSpecialty, input.Email, input.Password)
         cursor.execute(query, values)
         connection.commit()
         return {"message": "Doctor added successfully"}
@@ -371,10 +422,10 @@ def addPatient(input: addPatientInput):
     try:
         cursor = connection.cursor()
         query = """
-            INSERT INTO Patients (PatientId, PatientName, PatientInfo, PatientAge, Gender, Email, Password)
-            VALUES ( %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO Patients ( PatientName, PatientInfo, PatientAge, Gender, Email, Password)
+            VALUES ( %s, %s, %s, %s, %s, %s)
         """
-        values = (input.PatientId, input.PatientName, input.PatientInfo, input.PatientAge, input.Gender, input.Email, input.Password)
+        values = (input.PatientName, input.PatientInfo, input.PatientAge, input.Gender, input.Email, input.Password)
         cursor.execute(query, values)
         connection.commit()
         return {"message": "Patient added successfully"}

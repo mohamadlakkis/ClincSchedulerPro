@@ -2,7 +2,6 @@ from pydantic import BaseModel
 from typing import Optional
 
 class addDoctorInput(BaseModel):
-    DoctorId: int
     DoctorName: str
     DoctorInfo: str
     DoctorSpecialty: str
@@ -10,7 +9,6 @@ class addDoctorInput(BaseModel):
     Password: str
 
 class addPatientInput(BaseModel):
-    PatientId: int
     PatientName: str
     PatientInfo: str
     PatientAge: int
@@ -19,7 +17,6 @@ class addPatientInput(BaseModel):
     Password: str
 
 class addAppointmentInput(BaseModel):
-    DoctorId: int
     PatientId: int 
     Date: str = "2023-10-01"
     startTime: int = 1
