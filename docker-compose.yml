@@ -27,9 +27,23 @@ services:
     networks:
       - app-network
     restart: on-failure
-    
+  frontend:
+    build:
+      ./frontend
+    ports:
+      - "3001:3000" 
+    environment:
+      - PYTHONUNBUFFERED=1 
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/usr/src/app
+      - /usr/src/app/node_modules
+    networks:
+      - app-network
 networks:
   app-network:
+  
     driver: bridge
 
 volumes:

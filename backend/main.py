@@ -8,6 +8,7 @@ from medibot_RAG_service.mediBot import mediBotRag , initializeState, vector_sto
 from langgraph.types import Command
 from langchain_community.document_loaders import PyPDFLoader
 from tempfile import NamedTemporaryFile
+from fastapi.middleware.cors import CORSMiddleware
 from bot_scheduler_service.schedulerBot import schedulerBotFunction
 from auth.classesInput import loginInput, SignUpPatient, SignUpDoctor
 from auth.extensions import check_password_hash, generate_password_hash
@@ -23,7 +24,15 @@ h = mediBotRag.invoke(initializeState(), config = config)
 
 
 app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# Add CORS middleware to allow OPTIONS requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Adjust this to restrict origins in production
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods, including OPTIONS
+    allow_headers=["*"],
+)
 ### Security ###
 security = HTTPBearer()
 def decode_token(token):
@@ -438,10 +447,10 @@ def showOneDoctorAllPatients(input: showOneDoctorAllPatientsInput):
         current_date = input.Date
         next_5_days = (datetime.strptime(current_date, "%Y-%m-%d") + timedelta(days=5)).strftime("%Y-%m-%d")
         cursor.execute("SELECT Date,startTime FROM Appointments WHERE DoctorId = %s AND PatientId = %s AND Date >= %s AND Date <= %s",
-                       (input.DoctorId, input.PatienId, input.Date, next_5_days))
+                       (input.DoctorId, input.PatientId, input.Date, next_5_days))
         appointments_in_blue = cursor.fetchall()
         cursor.execute("SELECT Date,startTime FROM Appointments WHERE DoctorId = %s AND PatientId != %s AND Date >= %s AND Date <= %s",
-                       (input.DoctorId, input.PatienId, input.Date, next_5_days))
+                       (input.DoctorId, input.PatientId, input.Date, next_5_days))
         appointments_in_red = cursor.fetchall()
         return {
             "appointments_in_blue" : appointments_in_blue, 
@@ -520,4 +529,4 @@ def mediBotRagEndpoint(input: mediBotRagInput):
 @app.post("/schedulerBotEndpoint")
 def schedulerBotEndpoint(input:str, PatientID: str): 
     res = schedulerBotFunction(input, PatientID)
-    return {"answer": res} 
+    return {"answer": res}
