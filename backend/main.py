@@ -12,7 +12,6 @@ from auth.classesInput import loginInput, SignUpPatient, SignUpDoctor
 from auth.extensions import check_password_hash, generate_password_hash
 import os
 import jwt
-import datetime
 
 # user information
 config = {"configurable": {"thread_id": "1"}}
