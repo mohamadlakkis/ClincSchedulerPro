@@ -1,21 +1,15 @@
 FROM node:18-alpine
-
 WORKDIR /usr/src/app
 
-
-
-# Install dependencies first (better caching)
+# copy your package files and install everything else
 COPY package*.json ./
-RUN npm config set fetch-timeout 300000 && \
-    npm config set registry https://registry.npmjs.org/ && \
-    npm install --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 
-# Copy the rest of the application
-COPY ./ .
+# axios issue from before 
+RUN npm install axios --legacy-peer-deps --save
 
-# Build the application
+COPY . .
 RUN npm run build
 
 EXPOSE 3000
-
 CMD ["npm", "run", "dev", "--", "--host"]
