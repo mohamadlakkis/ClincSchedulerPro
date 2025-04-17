@@ -58,6 +58,8 @@ def get_current_user(token: HTTPAuthorizationCredentials = Depends(security)):
         )
     return user_id
 
+# Login and Register Endpoints:
+
 @app.post("/loginAdmin")
 def loginAdmin(auth_request: loginInput):
     """
@@ -377,58 +379,6 @@ def getAllAppointmentsForPatient(input: getAllAppointmentsForPatientInput):
         cursor.execute("SELECT * FROM Appointments WHERE PatientId = %s", (input.PatientId,))
         appointments = cursor.fetchall()
         return {"appointments": appointments}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cursor.close()
-        connection.close()
-
-@app.post("/addDoctor")
-def addDoctor(input: addDoctorInput): 
-    '''Only By Admins'''
-    '''
-    Documentation: 
-        - Add a parituclar doctor to the clinic db, restricted to only admins
-    '''
-    connection = get_connection()
-    if connection is None:
-        raise HTTPException(status_code=500, detail="Database connection failed")
-    try:
-        cursor = connection.cursor()
-        query = """
-            INSERT INTO Doctors (DoctorName, DoctorInfo, DoctorSpecialty, Email, Password)
-            VALUES (%s, %s, %s, %s, %s)
-        """
-        values = (input.DoctorName, input.DoctorInfo, input.DoctorSpecialty, input.Email, input.Password)
-        cursor.execute(query, values)
-        connection.commit()
-        return {"message": "Doctor added successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        cursor.close()
-        connection.close()
-
-@app.post("/addPatient")
-def addPatient(input: addPatientInput): 
-    '''Only By Admins'''
-    '''
-    Documentation: 
-        - Add a parituclar patient to the clinic db, restricted to only admins
-    '''
-    connection = get_connection()
-    if connection is None:
-        raise HTTPException(status_code=500, detail="Database connection failed")
-    try:
-        cursor = connection.cursor()
-        query = """
-            INSERT INTO Patients ( PatientName, PatientInfo, PatientAge, Gender, Email, Password)
-            VALUES ( %s, %s, %s, %s, %s, %s)
-        """
-        values = (input.PatientName, input.PatientInfo, input.PatientAge, input.Gender, input.Email, input.Password)
-        cursor.execute(query, values)
-        connection.commit()
-        return {"message": "Patient added successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
