@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
 import "../styles/AssistAI.css";
 
 function AssistAI() {
@@ -138,7 +139,11 @@ function AssistAI() {
         {messages.map((message, index) => (
           <div key={index} className={`message ${message.sender}`}>
             <div className="message-content">
-              {message.text}
+              {message.sender === "bot" ? (
+                <ReactMarkdown>{message.text}</ReactMarkdown>
+              ) : (
+                message.text
+              )}
               <div className="message-time">{message.time}</div>
             </div>
           </div>
