@@ -7,15 +7,12 @@ from medibot_RAG_service.mediBot import mediBotRag , initializeState, vector_sto
 from langgraph.types import Command
 from langchain_community.document_loaders import PyPDFLoader
 from tempfile import NamedTemporaryFile
-from bot_scheduler_service.schedulerBot import schedulerBotFunction
-<<<<<<< HEAD
 from fastapi.middleware.cors import CORSMiddleware
-=======
+from bot_scheduler_service.schedulerBot import schedulerBotFunction
 from auth.classesInput import loginInput, SignUpPatient, SignUpDoctor
 from auth.extensions import check_password_hash, generate_password_hash
 import os
 import jwt
->>>>>>> origin/backend
 
 # user information
 config = {"configurable": {"thread_id": "1"}}
@@ -27,7 +24,6 @@ h = mediBotRag.invoke(initializeState(), config = config)
 
 app = FastAPI()
 
-<<<<<<< HEAD
 # Add CORS middleware to allow OPTIONS requests
 app.add_middleware(
     CORSMiddleware,
@@ -36,7 +32,6 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all HTTP methods, including OPTIONS
     allow_headers=["*"],
 )
-=======
 ### Security ###
 security = HTTPBearer()
 def decode_token(token):
@@ -285,7 +280,6 @@ def registerDoctor(auth_register: SignUpDoctor):
     finally:
         cursor.close()
         connection.close()
->>>>>>> origin/backend
 
 @app.get("/")
 def root():
