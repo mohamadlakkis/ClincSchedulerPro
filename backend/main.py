@@ -1,5 +1,4 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from database_connection_service.db_connection import get_connection
 from database_connection_service.classes_input import *
 from datetime import datetime, timedelta
@@ -16,7 +15,17 @@ config = {"configurable": {"thread_id": "1"}}
 # Graph Initialization, this is just to initialize the states
 h = mediBotRag.invoke(initializeState(), config = config)
 
+
 app = FastAPI()
+
+# Add CORS middleware to allow OPTIONS requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Adjust this to restrict origins in production
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods, including OPTIONS
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def root():

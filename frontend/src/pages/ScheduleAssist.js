@@ -17,7 +17,9 @@ function ScheduleAssist() {
 
   // Load messages from localStorage when component mounts
   useEffect(() => {
-    const savedMessages = localStorage.getItem(`schedulerBotChat_${localStorage.getItem("userId")}`);
+    const savedMessages = localStorage.getItem(
+      `schedulerBotChat_${localStorage.getItem("userId")}`
+    );
     if (savedMessages) {
       setMessages(JSON.parse(savedMessages));
     } else {
@@ -35,7 +37,10 @@ function ScheduleAssist() {
   // Save messages to localStorage whenever they change
   useEffect(() => {
     if (messages.length > 0) {
-      localStorage.setItem(`schedulerBotChat_${localStorage.getItem("userId")}`, JSON.stringify(messages));
+      localStorage.setItem(
+        `schedulerBotChat_${localStorage.getItem("userId")}`,
+        JSON.stringify(messages)
+      );
     }
   }, [messages]);
 
@@ -56,12 +61,21 @@ function ScheduleAssist() {
 
   const processUserInput = async (userInput) => {
     try {
-      const response = await fetch(`http://localhost:8001/schedulerBotEndpoint?input=${encodeURIComponent(userInput)}&PatientID=${encodeURIComponent(localStorage.getItem("userId"))}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await fetch(
+        `http://localhost:8001/schedulerBotEndpoint?input=${encodeURIComponent(
+          userInput
+        )}&PatientID=${encodeURIComponent(localStorage.getItem("userId"))}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_message: userInput,
+            PatientID: localStorage.getItem("userId"), // Get patient ID from localStorage
+          }),
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to get response from scheduler bot");
@@ -117,7 +131,9 @@ function ScheduleAssist() {
 
   // Add clear chat functionality
   const clearChat = () => {
-    localStorage.removeItem(`schedulerBotChat_${localStorage.getItem("userId")}`);
+    localStorage.removeItem(
+      `schedulerBotChat_${localStorage.getItem("userId")}`
+    );
     setMessages([
       {
         text: "Hello! I'm your scheduling assistant. I can help you book an appointment with a doctor. Would you like to schedule an appointment?",
@@ -181,7 +197,7 @@ function ScheduleAssist() {
         <button onClick={() => navigate("/calender")} className="nav-button">
           Go to Calendar
         </button>
-        <button onClick={() => navigate("/")} className="nav-button">
+        <button onClick={() => navigate("/landing")} className="nav-button">
           Go back home
         </button>
       </footer>

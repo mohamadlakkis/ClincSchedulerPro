@@ -11,7 +11,9 @@ function AssistAI() {
 
   // Load messages from localStorage when component mounts
   useEffect(() => {
-    const savedMessages = localStorage.getItem(`mediBotChat_${localStorage.getItem("userId")}`);
+    const savedMessages = localStorage.getItem(
+      `mediBotChat_${localStorage.getItem("userId")}`
+    );
     if (savedMessages) {
       setMessages(JSON.parse(savedMessages));
     } else {
@@ -29,7 +31,10 @@ function AssistAI() {
   // Save messages to localStorage whenever they change
   useEffect(() => {
     if (messages.length > 0) {
-      localStorage.setItem(`mediBotChat_${localStorage.getItem("userId")}`, JSON.stringify(messages));
+      localStorage.setItem(
+        `mediBotChat_${localStorage.getItem("userId")}`,
+        JSON.stringify(messages)
+      );
     }
   }, [messages]);
 
@@ -70,16 +75,16 @@ function AssistAI() {
         },
         body: JSON.stringify({
           userQuestions: input,
-          PatientId: parseInt(localStorage.getItem("userId") || "0"),
+          PatientId: 5,
         }),
       });
-
+      console.log("Response received from server:", response);
       if (!response.ok) {
         throw new Error("Failed to get response from MediBot");
       }
 
       const data = await response.json();
-
+      console.log("Parsed response data:", data);
       setTimeout(() => {
         const botResponse = {
           text: data.answer,
@@ -173,7 +178,7 @@ function AssistAI() {
         <button onClick={() => navigate("/calender")} className="nav-button">
           Go to Calendar
         </button>
-        <button onClick={() => navigate("/")} className="nav-button">
+        <button onClick={() => navigate("/landing")} className="nav-button">
           Go back home
         </button>
       </footer>

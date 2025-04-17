@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../styles/landing.css";
 import NavBar from "../components/NavBar";
 
-function Landing() {
+function Landing({ onSignOut }) {
   const navigate = useNavigate();
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,31 +31,40 @@ function Landing() {
     }
   ];
 
+  const handleSignOut = () => {
+    onSignOut();
+    navigate('/');
+  };
+
   useEffect(() => {
     const fetchAppointments = async () => {
+      setIsLoading(true);
       try {
-        const response = await fetch("http://localhost:8001/getAllAppointmentsForPatient", {
-          method: "POST",
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
+          console.error('No user ID found');
+          return;
+        }
+
+        const response = await fetch('http://localhost:8001/getAllAppointmentsForPatient', {
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            PatientId: localStorage.getItem("userId")
-          }),
+            PatientId: userId
+          })
         });
 
         if (!response.ok) {
-          throw new Error("Failed to fetch appointments");
+          throw new Error('Failed to fetch appointments');
         }
 
         const data = await response.json();
-        
-        // Filter appointments for the next month and sort by date and time
         const now = new Date();
-        const nextMonth = new Date(now);
-        nextMonth.setMonth(nextMonth.getMonth() + 1);
-        
-        const filteredAppointments = data.appointments
+        const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, now.getDate());
+
+        const upcomingAppointments = data.appointments
           .filter(appointment => {
             const appointmentDate = new Date(appointment.Date);
             return appointmentDate >= now && appointmentDate <= nextMonth;
@@ -66,12 +75,12 @@ function Landing() {
             if (dateA.getTime() === dateB.getTime()) {
               return a.startTime - b.startTime;
             }
-            return dateA.getTime() - dateB.getTime();
+            return dateA - dateB;
           });
 
-        setUpcomingAppointments(filteredAppointments);
+        setUpcomingAppointments(upcomingAppointments);
       } catch (error) {
-        console.error("Error fetching appointments:", error);
+        console.error('Error fetching appointments:', error);
       } finally {
         setIsLoading(false);
       }
@@ -113,6 +122,9 @@ function Landing() {
             <p className="subtitle">
               Your AI-powered medical assistant for smarter healthcare management
             </p>
+            <button onClick={handleSignOut} className="sign-out-button">
+              Sign Out
+            </button>
           </div>
         </header>
 
