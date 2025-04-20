@@ -11,8 +11,11 @@ const Calendar = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [blueAppointments, setBlueAppointments] = useState([]);
   const [redAppointments, setRedAppointments] = useState([]);
-  const DOCTOR_ID = location.state?.doctorId;
-  const PATIENT_ID = location.state?.patientId || null; // Default to 1 if not provided
+  const [greenAppointments, setGreenAppointments] = useState([]); // Available appointments
+  
+  const DOCTOR_ID = localStorage.getItem('userId') || location.state?.doctorId;
+  const PATIENT_ID = localStorage.getItem('userId') || location.state?.patientId || null;
+  const USER_TYPE = localStorage.getItem('userType') || (location.state?.doctorId ? "doctor" : "patient");
 
   const timeSlots = Array.from({ length: 18 }, (_, i) => {
     const totalMinutes = 9 * 60 + i * 30;
@@ -46,13 +49,107 @@ const Calendar = () => {
     const formattedDate = formatDate(date);
     const isBookedByPatient = isSlotBookedByPatient(formattedDate, slotIndex);
     const isBookedByOthers = isSlotBookedByOthers(formattedDate, slotIndex);
+    const isAvailable = greenAppointments.some(
+      (appointment) =>
+        appointment.Date === formattedDate && appointment.StartTime === slotIndex
+    );
 
-    if (isBookedByPatient) {
-      setSelectedSlot({ date: formattedDate, time: slotIndex });
-      setShowCancelModal(true);
-    } else if (!isBookedByOthers) {
-      setSelectedSlot({ date: formattedDate, time: slotIndex });
-      setShowBookingModal(true);
+    if (USER_TYPE === "doctor") {
+      // DOCTOR INTERACTION
+      if (isBookedByPatient) {
+        // Blue slot (booked) - Allow cancellation
+        setSelectedSlot({ date: formattedDate, time: slotIndex });
+        setShowCancelModal(true);
+      } 
+      else if (isAvailable) {
+        // Green slot (available but not booked) - Allow deleting availability
+        if (window.confirm("Remove this availability slot?")) {
+          handleDeleteAvailability(formattedDate, slotIndex);
+        }
+      }
+      else {
+        // Red slot (unavailable) - Allow creating availability
+        if (window.confirm("Make this slot available for booking?")) {
+          handleMakeAvailable(formattedDate, slotIndex);
+        }
+      }
+    } 
+    else {
+      // PATIENT INTERACTION - Existing logic
+      // If the slot is booked by other patients (red), don't allow interaction
+      if (isBookedByOthers) {
+        return;
+      }
+      // If the slot is booked by this patient (blue), show cancel option
+      else if (isBookedByPatient) {
+        setSelectedSlot({ date: formattedDate, time: slotIndex });
+        setShowCancelModal(true);
+      }
+      // If the slot is available (green), allow booking
+      else if (isAvailable) {
+        setSelectedSlot({ date: formattedDate, time: slotIndex });
+        setShowBookingModal(true);
+      }
+    }
+  };
+
+  // Function to make a slot available (for doctors)
+  const handleMakeAvailable = async (date, slotIndex) => {
+    try {
+      const response = await fetch("http://localhost:8001/insertAvailabilityofDoctor", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          DoctorId: parseInt(DOCTOR_ID, 10),
+          Date: date,
+          startTime: slotIndex,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to make slot available");
+      }
+
+      alert("Slot is now available for booking!");
+      
+      // Refresh the calendar to show updated availability
+      await fetchAppointments();
+    } catch (error) {
+      console.error("Error making slot available:", error);
+      alert(`Error: ${error.message}`);
+    }
+  };
+
+  // Function to delete availability (for doctors)
+  const handleDeleteAvailability = async (date, slotIndex) => {
+    try {
+      const response = await fetch("http://localhost:8001/deleteAvailabilityofDoctor", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          DoctorId: parseInt(DOCTOR_ID, 10),
+          Date: date,
+          startTime: slotIndex,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to delete availability");
+      }
+
+      alert("Availability removed successfully!");
+      
+      // Refresh the calendar to show updated availability
+      await fetchAppointments();
+    } catch (error) {
+      console.error("Error deleting availability:", error);
+      alert(`Error: ${error.message}`);
     }
   };
 
@@ -75,6 +172,50 @@ const Calendar = () => {
     return days;
   }, [currentWeek]);
 
+  // Function to fetch available appointments for the current week
+  const fetchAvailableAppointments = useCallback(async () => {
+    const weekDays = generateWeekDays();
+    const startDate = formatDate(weekDays[0]);
+    console.log("Fetching available appointments for date:", startDate);
+
+    try {
+      const response = await fetch(
+        "http://localhost:8001/availableforPatient",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            DoctorId: DOCTOR_ID,
+            Date: startDate,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch available appointments");
+      }
+
+      const data = await response.json();
+      console.log("Raw API response for available appointments:", data);
+
+      // Process green appointments (available appointments)
+      // The API returns appointments_green array with [Date, startTime] format
+      const processedGreenAppointments = data.appointments_green.map(
+        ([Date, StartTime]) => ({
+          Date,
+          StartTime,
+        })
+      );
+      console.log("Processed green appointments:", processedGreenAppointments);
+
+      setGreenAppointments(processedGreenAppointments);
+    } catch (error) {
+      console.error("Error fetching available appointments:", error);
+    }
+  }, [DOCTOR_ID, generateWeekDays]);
+
   // Function to fetch appointments for the current week
   const fetchAppointments = useCallback(async () => {
     const weekDays = generateWeekDays();
@@ -82,9 +223,59 @@ const Calendar = () => {
     console.log("Fetching appointments for date:", startDate);
 
     try {
-      const response = await fetch(
-        "http://localhost:8001/showOneDoctorAllPatients",
-        {
+      if (USER_TYPE === "doctor") {
+        // Doctor view - fetch from allAppointmentsForDoctor
+        const response = await fetch("http://localhost:8001/allAppointmentsForDoctor", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            DoctorId: DOCTOR_ID,
+            Date: startDate,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch doctor appointments");
+        }
+
+        const data = await response.json();
+        console.log("Doctor appointments data:", data);
+
+        // For doctor view:
+        // - appointment_null_patient (slots with no patients) should be green (available)
+        // - appointments_booked (slots with patients) should be blue (booked)
+        // - all other slots default to red (unavailable)
+
+        // Process available slots (green)
+        const processedGreenAppointments = data.appointment_null_patient.map(
+          ([Date, startTime]) => ({
+            Date,
+            StartTime: startTime,
+          })
+        );
+
+        // Process booked slots (blue)
+        const processedBlueAppointments = data.appointments_booked.map(
+          ([Date, startTime, PatientId, feedback]) => ({
+            Date,
+            StartTime: startTime,
+            PatientId,
+            feedback
+          })
+        );
+
+        // Update state
+        setGreenAppointments(processedGreenAppointments);
+        setBlueAppointments(processedBlueAppointments);
+        setRedAppointments([]); // No red appointments in doctor view, all non-green/blue slots are unavailable
+
+        console.log("Doctor view - Green appointments:", processedGreenAppointments);
+        console.log("Doctor view - Blue appointments:", processedBlueAppointments);
+      } else {
+        // Patient view - existing logic 
+        const response = await fetch("http://localhost:8001/showOneDoctorAllPatients", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -94,54 +285,50 @@ const Calendar = () => {
             PatientId: PATIENT_ID,
             Date: startDate,
           }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch appointments");
         }
-      );
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch appointments");
+        const data = await response.json();
+        console.log("Patient view - Raw API response:", data);
+
+        // Process blue appointments (patient's own appointments)
+        const processedBlueAppointments = data.appointments_in_blue.map(
+          ([Date, StartTime]) => ({
+            Date,
+            StartTime,
+          })
+        );
+        
+        // Process red appointments (other patients' appointments)
+        const processedRedAppointments = data.appointments_in_red.map(
+          ([Date, StartTime]) => ({
+            Date,
+            StartTime,
+          })
+        );
+
+        setBlueAppointments(processedBlueAppointments);
+        setRedAppointments(processedRedAppointments);
+        
+        // For patient view, we need to fetch available slots separately
+        await fetchAvailableAppointments();
+        
+        console.log("Patient view - Blue appointments:", processedBlueAppointments);
+        console.log("Patient view - Red appointments:", processedRedAppointments);
       }
-
-      const data = await response.json();
-      console.log("Raw API response:", data);
-
-      // Process blue appointments (patient's own appointments)
-      const processedBlueAppointments = data.appointments_in_blue.map(
-        ([Date, StartTime]) => ({
-          Date,
-          StartTime,
-        })
-      );
-      console.log("Processed blue appointments:", processedBlueAppointments);
-      // Process red appointments (other patients' appointments)
-      const processedRedAppointments = data.appointments_in_red.map(
-        ([Date, StartTime]) => ({
-          Date,
-          StartTime,
-        })
-      );
-      console.log("Processed red appointments:", processedRedAppointments);
-
-      setBlueAppointments(processedBlueAppointments);
-      setRedAppointments(processedRedAppointments);
-
-      // Log the current state after update
-      console.log(
-        "Updated state - Blue appointments:",
-        processedBlueAppointments
-      );
-      console.log(
-        "Updated state - Red appointments:",
-        processedRedAppointments
-      );
     } catch (error) {
       console.error("Error fetching appointments:", error);
     }
-  }, [DOCTOR_ID, PATIENT_ID, generateWeekDays]);
+  }, [DOCTOR_ID, PATIENT_ID, USER_TYPE, generateWeekDays, fetchAvailableAppointments]);
 
   // Fetch appointments when component mounts and when week changes
   useEffect(() => {
     fetchAppointments();
-  }, [fetchAppointments]);
+    fetchAvailableAppointments();
+  }, [fetchAppointments, fetchAvailableAppointments]);
 
   // Function to handle booking
   const handleBooking = async () => {
@@ -149,18 +336,63 @@ const Calendar = () => {
 
     try {
       const requestData = {
-        DoctorId: parseInt(DOCTOR_ID, 10), // Convert to integer
-        PatientId: parseInt(PATIENT_ID, 10), // Convert to integer
+        DoctorId: parseInt(DOCTOR_ID, 10),
+        PatientId: parseInt(PATIENT_ID, 10),
         Date: selectedSlot.date,
         startTime: selectedSlot.time,
-        feedback: "",
       };
 
-      const response = await fetch("http://localhost:8001/insertAppointment", {
+      // Check if the user has another appointment in the same week
+      const checkResponse = await fetch("http://localhost:8001/checkIfAnotherAppointmentSameWeek", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          PatientId: parseInt(PATIENT_ID, 10),
+          Date: selectedSlot.date,
+        }),
+      });
+
+      const checkData = await checkResponse.json();
+      
+      if (checkData.hasAppointment) {
+        // Ask user if they want to cancel existing appointment and book a new one
+        const existingAppt = checkData.appointment;
+        const confirmSwitch = window.confirm(
+          `You already have an appointment on ${existingAppt.Date} at time slot ${existingAppt.startTime}. 
+          Would you like to cancel that appointment and book this one instead?`
+        );
+        
+        if (!confirmSwitch) {
+          setShowBookingModal(false);
+          return;
+        }
+        
+        // Cancel the existing appointment
+        const cancelResponse = await fetch("http://localhost:8001/deleteAppointment", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            DoctorId: existingAppt.DoctorId,
+            PatientId: parseInt(PATIENT_ID, 10),
+            Date: existingAppt.Date,
+            startTime: existingAppt.startTime,
+          }),
+        });
+        
+        if (!cancelResponse.ok) {
+          throw new Error("Failed to cancel existing appointment");
+        }
+      }
+
+      // Book the new appointment
+      const response = await fetch("http://localhost:8001/bookAppointment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(requestData),
       });
@@ -175,6 +407,7 @@ const Calendar = () => {
 
       // Fetch updated appointments
       await fetchAppointments();
+      await fetchAvailableAppointments();
 
       // Close the modal and reset selected slot
       setShowBookingModal(false);
@@ -294,6 +527,30 @@ const Calendar = () => {
           </div>
         </div>
 
+        {/* Color legend */}
+        <div className="calendar-legend">
+          <div className="legend-item">
+            <span className="legend-color available-legend"></span>
+            <span>Available slots</span>
+          </div>
+          <div className="legend-item">
+            <span className="legend-color user-booked-legend"></span>
+            <span>Your appointments</span>
+          </div>
+          <div className="legend-item">
+            <span className="legend-color booked-legend"></span>
+            <span>Booked by others</span>
+          </div>
+          <div className="legend-item">
+            <span className="legend-color unavailable-legend"></span>
+            <span>Unavailable</span>
+          </div>
+          <div className="legend-item">
+            <span className="legend-color past-legend"></span>
+            <span>Past date</span>
+          </div>
+        </div>
+
         <div className="calendar-grid">
           <div className="time-column">
             <div className="time-header">Time</div>
@@ -326,13 +583,23 @@ const Calendar = () => {
                   formattedDate,
                   slot.index
                 );
+                const isAvailable = greenAppointments.some(
+                  (appointment) =>
+                    appointment.Date === formattedDate &&
+                    appointment.StartTime === slot.index
+                );
                 const isPast = isPastDate(day);
 
                 console.log(`Slot ${slot.index} on ${formattedDate}:`, {
                   isBookedByPatient,
                   isBookedByOthers,
+                  isAvailable,
                   isPast,
-                  appointments: [...blueAppointments, ...redAppointments].filter(
+                  appointments: [
+                    ...blueAppointments,
+                    ...redAppointments,
+                    ...greenAppointments,
+                  ].filter(
                     (a) =>
                       a.Date === formattedDate && a.StartTime === slot.index
                   ),
@@ -345,8 +612,10 @@ const Calendar = () => {
                   slotClass += " user-booked";
                 } else if (isBookedByOthers) {
                   slotClass += " booked";
-                } else {
+                } else if (isAvailable) {
                   slotClass += " available";
+                } else {
+                  slotClass += " unavailable";
                 }
 
                 return (
@@ -359,9 +628,11 @@ const Calendar = () => {
                       ? "Your Booking"
                       : isBookedByOthers
                       ? "Booked"
+                      : isAvailable
+                      ? "Available" 
                       : isPast
                       ? "Past"
-                      : "Available"}
+                      : "Unavailable"}
                   </div>
                 );
               })}

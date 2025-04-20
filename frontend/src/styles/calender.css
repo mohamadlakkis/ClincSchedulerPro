@@ -123,31 +123,39 @@
 }
 
 .time-slot {
-  padding: 0.8rem;
+  padding: 8px;
   text-align: center;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-  min-height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   cursor: pointer;
-  transition: all 0.3s ease;
+  border: 1px solid #ddd;
+  background-color: #ffccdc; /* Light pink color for default slots */
+  color: #333;
 }
 
 .time-slot.available {
-  background: rgba(40, 167, 69, 0.1);
-  color: #28a745;
+  background-color: #4caf50; /* Green for available slots */
+  color: white;
 }
 
 .time-slot.booked {
-  background: rgba(223, 7, 28, 0.884);
-  color: #130a0b;
-  cursor: not-allowed;
+  background-color: #f44336; /* Red for other patients' bookings */
+  color: white;
 }
 
 .time-slot.user-booked {
-  background: rgba(23, 112, 206, 0.863);
-  color: #3e4a57;
+  background-color: #90caf9; /* Blue for user's bookings */
+  color: #000;
+  font-weight: bold;
+}
+
+.time-slot.unavailable {
+  background-color: #ffccdc; /* Pink for unavailable slots */
+  color: #333;
+}
+
+.time-slot.past-slot {
+  background-color: #f5f5f5; /* Gray for past slots */
+  color: #999;
+  cursor: not-allowed;
 }
 
 .time-slot.available:hover {
@@ -258,6 +266,46 @@
 
 .nav-button:active {
   transform: translateY(0);
+}
+
+.calendar-legend {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin: 0 10px;
+}
+
+.legend-color {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin-right: 5px;
+}
+
+.available-legend {
+  background-color: #4caf50; /* Green */
+}
+
+.user-booked-legend {
+  background-color: #90caf9; /* Blue */
+}
+
+.booked-legend {
+  background-color: #f44336; /* Red */
+}
+
+.unavailable-legend {
+  background-color: #ffccdc; /* Pink */
+}
+
+.past-legend {
+  background-color: #f5f5f5; /* Gray */
 }
 
 @keyframes fadeIn {
