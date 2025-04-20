@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../styles/home.css';
 
 function Home() {
   const navigate = useNavigate();
+  const [userType, setUserType] = useState('patient');
 
   const handleLogin = (isNew) => {
-    navigate('/login', { state: { isNew } });
+    navigate('/login', { state: { isNew, userType } });
   };
 
   return (
@@ -16,6 +17,32 @@ function Home() {
         <p className="home-subtitle">
           Your AI-powered medical assistant for smarter healthcare management
         </p>
+        
+        <div className="user-type-selection">
+          <h2>Select Account Type</h2>
+          <div className="radio-buttons">
+            <label>
+              <input
+                type="radio"
+                name="userType"
+                value="patient"
+                checked={userType === 'patient'}
+                onChange={() => setUserType('patient')}
+              />
+              Patient
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="userType"
+                value="doctor"
+                checked={userType === 'doctor'}
+                onChange={() => setUserType('doctor')}
+              />
+              Doctor
+            </label>
+          </div>
+        </div>
         
         <div className="auth-buttons">
           <div className="auth-section">
