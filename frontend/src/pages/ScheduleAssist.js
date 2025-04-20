@@ -1,11 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import '../styles/AssistAI.css'; // We can reuse the same styles
+import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import "../styles/AssistAI.css"; // We can reuse the same styles
 
 function ScheduleAssist() {
   const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [appointmentDetails, setAppointmentDetails] = useState({
     doctorId: null,
@@ -15,14 +15,34 @@ function ScheduleAssist() {
   });
   const messagesEndRef = useRef(null);
 
+  // Load messages from localStorage when component mounts
   useEffect(() => {
-    // Add welcome message when component mounts
-    setMessages([{
-      text: "Hello! I'm your scheduling assistant. I can help you book an appointment with a doctor. Would you like to schedule an appointment?",
-      sender: 'bot',
-      time: getCurrentTime()
-    }]);
+    const savedMessages = localStorage.getItem(
+      `schedulerBotChat_${localStorage.getItem("userId")}`
+    );
+    if (savedMessages) {
+      setMessages(JSON.parse(savedMessages));
+    } else {
+      // Add welcome message only if no saved messages exist
+      setMessages([
+        {
+          text: "Hello! I'm your scheduling assistant. I can help you book an appointment with a doctor. Would you like to schedule an appointment?",
+          sender: "bot",
+          time: getCurrentTime(),
+        },
+      ]);
+    }
   }, []);
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem(
+        `schedulerBotChat_${localStorage.getItem("userId")}`,
+        JSON.stringify(messages)
+      );
+    }
+  }, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -33,93 +53,46 @@ function ScheduleAssist() {
   }, [messages]);
 
   const getCurrentTime = () => {
-    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const processUserInput = async (userInput) => {
-    // Here you would integrate with a natural language processing service
-    // For now, we'll use a simple keyword-based system
-    const input = userInput.toLowerCase();
-
-    if (input.includes('yes') && !appointmentDetails.doctorId) {
-      return {
-        text: "Great! Could you tell me which doctor you'd like to see? (Please provide the doctor's ID)",
-        action: 'askDoctor'
-      };
-    }
-    
-    if (input.includes('doctor') || /^d\d+$/i.test(input)) {
-      const doctorId = input.match(/\d+/) ? input.match(/\d+/)[0] : null;
-      if (doctorId) {
-        setAppointmentDetails(prev => ({ ...prev, doctorId: `D${doctorId}` }));
-        return {
-          text: "What date would you like to schedule the appointment for? (Please use YYYY-MM-DD format)",
-          action: 'askDate'
-        };
-      }
-    }
-
-    if (input.match(/\d{4}-\d{2}-\d{2}/)) {
-      const date = input.match(/\d{4}-\d{2}-\d{2}/)[0];
-      setAppointmentDetails(prev => ({ ...prev, date }));
-      return {
-        text: "What time would you like the appointment? (Please provide hour between 9-17)",
-        action: 'askTime'
-      };
-    }
-
-    if (input.match(/\d{1,2}/)) {
-      const time = parseInt(input.match(/\d{1,2}/)[0]);
-      if (time >= 9 && time <= 17) {
-        setAppointmentDetails(prev => ({ ...prev, startTime: time }));
-        return {
-          text: "Great! I'll try to schedule your appointment. Please confirm the details:\n" +
-                `Doctor ID: ${appointmentDetails.doctorId}\n` +
-                `Date: ${appointmentDetails.date}\n` +
-                `Time: ${time}:00\n\n` +
-                "Should I proceed with booking? (Yes/No)",
-          action: 'confirm'
-        };
-      }
-    }
-
-    if (input.includes('yes') && appointmentDetails.startTime) {
-      try {
-        const response = await fetch('http://localhost:8001/insertAppointment', {
-          method: 'POST',
+    try {
+      const response = await fetch(
+        `http://localhost:8001/schedulerBotEndpoint?input=${encodeURIComponent(
+          userInput
+        )}&PatientID=${encodeURIComponent(localStorage.getItem("userId"))}`,
+        {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            ...appointmentDetails,
-            PatientId: localStorage.getItem('userId'), // Assuming you store user ID in localStorage
-            feedback: ''
+            user_message: userInput,
+            PatientID: localStorage.getItem("userId"), // Get patient ID from localStorage
           }),
-        });
-
-        if (response.ok) {
-          return {
-            text: "Perfect! Your appointment has been scheduled. You can view it in the calendar. Would you like to schedule another appointment?",
-            action: 'success'
-          };
-        } else {
-          return {
-            text: "I'm sorry, there was an error scheduling your appointment. The selected time might not be available. Would you like to try a different time?",
-            action: 'error'
-          };
         }
-      } catch (error) {
-        return {
-          text: "I'm sorry, there was an error connecting to the server. Please try again later.",
-          action: 'error'
-        };
-      }
-    }
+      );
 
-    return {
-      text: "I'm sorry, I didn't understand that. Could you please rephrase?",
-      action: 'unclear'
-    };
+      if (!response.ok) {
+        throw new Error("Failed to get response from scheduler bot");
+      }
+
+      const data = await response.json();
+      return {
+        text: data.answer,
+        action: "response",
+      };
+    } catch (error) {
+      console.error("Error:", error);
+      return {
+        text: "I'm sorry, there was an error processing your request. Please try again.",
+        action: "error",
+      };
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -129,31 +102,45 @@ function ScheduleAssist() {
     // Add user message
     const userMessage = {
       text: input,
-      sender: 'user',
-      time: getCurrentTime()
+      sender: "user",
+      time: getCurrentTime(),
     };
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
     setIsTyping(true);
 
     // Process the input and get bot response
     const response = await processUserInput(input);
-    
+
     setTimeout(() => {
       const botResponse = {
         text: response.text,
-        sender: 'bot',
-        time: getCurrentTime()
+        sender: "bot",
+        time: getCurrentTime(),
       };
-      setMessages(prev => [...prev, botResponse]);
+      setMessages((prev) => [...prev, botResponse]);
       setIsTyping(false);
     }, 1000);
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       handleSubmit(e);
     }
+  };
+
+  // Add clear chat functionality
+  const clearChat = () => {
+    localStorage.removeItem(
+      `schedulerBotChat_${localStorage.getItem("userId")}`
+    );
+    setMessages([
+      {
+        text: "Hello! I'm your scheduling assistant. I can help you book an appointment with a doctor. Would you like to schedule an appointment?",
+        sender: "bot",
+        time: getCurrentTime(),
+      },
+    ]);
   };
 
   return (
@@ -161,6 +148,9 @@ function ScheduleAssist() {
       <header className="chat-header">
         <h1>Schedule Assistant</h1>
         <p>Let me help you book an appointment</p>
+        <button onClick={clearChat} className="clear-chat-button">
+          Clear Chat
+        </button>
       </header>
 
       <div className="chat-messages">
@@ -194,8 +184,8 @@ function ScheduleAssist() {
           className="chat-input"
           disabled={isTyping}
         />
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           className="send-button"
           disabled={isTyping || !input.trim()}
         >
@@ -204,8 +194,12 @@ function ScheduleAssist() {
       </form>
 
       <footer className="chat-footer">
-        <button onClick={() => navigate('/calender')} className="nav-button">Go to Calendar</button>
-        <button onClick={() => navigate('/')} className="nav-button">Go back home</button>
+        <button onClick={() => navigate("/calender")} className="nav-button">
+          Go to Calendar
+        </button>
+        <button onClick={() => navigate("/landing")} className="nav-button">
+          Go back home
+        </button>
       </footer>
     </div>
   );

@@ -16,6 +16,12 @@
   max-width: none;
 }
 
+/* Add styles for when navbar is hidden */
+.main-content.no-navbar {
+  margin-left: 0;
+  width: 100vw;
+}
+
 .nav-bar.collapsed + .main-content {
   margin-left: 80px;
   width: calc(100vw - 80px);

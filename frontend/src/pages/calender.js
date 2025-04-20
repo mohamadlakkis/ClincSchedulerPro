@@ -16,38 +16,38 @@ const Calendar = () => {
   const DOCTOR_ID = location.state?.doctorId;
 
   const timeSlots = Array.from({ length: 18 }, (_, i) => {
-    const totalMinutes = 9 * 60 + i * 30; 
+    const totalMinutes = 9 * 60 + i * 30;
     const hour = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
     return {
-      index: i, 
-      display: `${hour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}` 
+      index: i,
+      display: `${hour.toString().padStart(2, "0")}:${minutes
+        .toString()
+        .padStart(2, "0")}`,
     };
   });
 
   const isSlotBookedByPatient = (date, slotIndex) => {
     return blueAppointments.some(
       (appointment) =>
-        appointment.Date === date &&
-        appointment.StartTime === slotIndex
+        appointment.Date === date && appointment.StartTime === slotIndex
     );
   };
 
   const isSlotBookedByOthers = (date, slotIndex) => {
     return redAppointments.some(
       (appointment) =>
-        appointment.Date === date &&
-        appointment.StartTime === slotIndex
+        appointment.Date === date && appointment.StartTime === slotIndex
     );
   };
 
   const handleSlotClick = (date, slotIndex) => {
     if (isPastDate(date)) return;
-  
+
     const formattedDate = formatDate(date);
     const isBookedByPatient = isSlotBookedByPatient(formattedDate, slotIndex);
     const isBookedByOthers = isSlotBookedByOthers(formattedDate, slotIndex);
-  
+
     if (isBookedByPatient) {
       setSelectedSlot({ date: formattedDate, time: slotIndex });
       setShowCancelModal(true);
@@ -56,7 +56,6 @@ const Calendar = () => {
       setShowBookingModal(true);
     }
   };
-  
 
   // Function to generate week days
   const generateWeekDays = useCallback(() => {
@@ -64,10 +63,10 @@ const Calendar = () => {
     const currentDay = today.getDay();
     const monday = new Date(today);
     monday.setDate(today.getDate() - (currentDay === 0 ? 6 : currentDay - 1));
-    
+
     const targetMonday = new Date(monday);
-    targetMonday.setDate(monday.getDate() + (currentWeek * 7));
-    
+    targetMonday.setDate(monday.getDate() + currentWeek * 7);
+
     const days = [];
     for (let i = 0; i < 5; i++) {
       const date = new Date(targetMonday);
@@ -81,49 +80,62 @@ const Calendar = () => {
   const fetchAppointments = useCallback(async () => {
     const weekDays = generateWeekDays();
     const startDate = formatDate(weekDays[0]);
-    console.log('Fetching appointments for date:', startDate);
+    console.log("Fetching appointments for date:", startDate);
 
     try {
-      const response = await fetch('http://localhost:8001/showOneDoctorAllPatients', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          DoctorId: DOCTOR_ID,
-          PatientId: PATIENT_ID,
-          Date: startDate
-        })
-      });
+      const response = await fetch(
+        "http://localhost:8001/showOneDoctorAllPatients",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            DoctorId: DOCTOR_ID,
+            PatientId: PATIENT_ID,
+            Date: startDate,
+          }),
+        }
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to fetch appointments');
+        throw new Error("Failed to fetch appointments");
       }
 
       const data = await response.json();
-      console.log('Raw API response:', data);
-      
+      console.log("Raw API response:", data);
+
       // Process blue appointments (patient's own appointments)
-      const processedBlueAppointments = data.appointments_in_blue.map(([Date, StartTime]) => ({
-        Date,
-        StartTime
-      }));
-      console.log('Processed blue appointments:', processedBlueAppointments);
+      const processedBlueAppointments = data.appointments_in_blue.map(
+        ([Date, StartTime]) => ({
+          Date,
+          StartTime,
+        })
+      );
+      console.log("Processed blue appointments:", processedBlueAppointments);
       // Process red appointments (other patients' appointments)
-      const processedRedAppointments = data.appointments_in_red.map(([Date, StartTime]) => ({
-        Date,
-        StartTime
-      }));
-      console.log('Processed red appointments:', processedRedAppointments);
+      const processedRedAppointments = data.appointments_in_red.map(
+        ([Date, StartTime]) => ({
+          Date,
+          StartTime,
+        })
+      );
+      console.log("Processed red appointments:", processedRedAppointments);
 
       setBlueAppointments(processedBlueAppointments);
       setRedAppointments(processedRedAppointments);
-      
+
       // Log the current state after update
-      console.log('Updated state - Blue appointments:', processedBlueAppointments);
-      console.log('Updated state - Red appointments:', processedRedAppointments);
+      console.log(
+        "Updated state - Blue appointments:",
+        processedBlueAppointments
+      );
+      console.log(
+        "Updated state - Red appointments:",
+        processedRedAppointments
+      );
     } catch (error) {
-      console.error('Error fetching appointments:', error);
+      console.error("Error fetching appointments:", error);
     }
   }, [DOCTOR_ID, PATIENT_ID, generateWeekDays]);
 
@@ -135,41 +147,41 @@ const Calendar = () => {
   // Function to handle booking
   const handleBooking = async () => {
     if (!selectedSlot) return;
-    
+
     try {
       const requestData = {
         DoctorId: parseInt(DOCTOR_ID, 10), // Convert to integer
         PatientId: parseInt(PATIENT_ID, 10), // Convert to integer
         Date: selectedSlot.date,
         startTime: selectedSlot.time,
-        feedback: ''
+        feedback: "",
       };
 
-      const response = await fetch('http://localhost:8001/insertAppointment', {
-        method: 'POST',
+      const response = await fetch("http://localhost:8001/insertAppointment", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
+          "Content-Type": "application/json",
+          Accept: "application/json",
         },
-        body: JSON.stringify(requestData)
+        body: JSON.stringify(requestData),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to book appointment');
+        throw new Error(errorData.detail || "Failed to book appointment");
       }
 
       // Show success message
-      alert('Appointment booked successfully!');
-      
+      alert("Appointment booked successfully!");
+
       // Fetch updated appointments
       await fetchAppointments();
-      
+
       // Close the modal and reset selected slot
       setShowBookingModal(false);
       setSelectedSlot(null);
     } catch (error) {
-      console.error('Booking error:', error);
+      console.error("Booking error:", error);
       alert(`Error booking appointment: ${error.message}`);
     }
   };
@@ -179,22 +191,22 @@ const Calendar = () => {
     if (!selectedSlot) return;
 
     try {
-      const response = await fetch('http://localhost:8001/deleteAppointment', {
-        method: 'POST',
+      const response = await fetch("http://localhost:8001/deleteAppointment", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           DoctorId: parseInt(DOCTOR_ID, 10),
           PatientId: parseInt(PATIENT_ID, 10),
           Date: selectedSlot.date,
-          startTime: selectedSlot.time // This is now the slot index
-        })
+          startTime: selectedSlot.time, // This is now the slot index
+        }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to cancel appointment');
+        throw new Error(errorData.detail || "Failed to cancel appointment");
       }
 
       // Refresh appointments after successful cancellation
@@ -288,7 +300,7 @@ const Calendar = () => {
             <div className="time-header">Time</div>
             {timeSlots.map((slot) => (
               <div key={slot.index} className="time-slot">
-                {slot.display}  
+                {slot.display}
               </div>
             ))}
           </div>
@@ -307,16 +319,24 @@ const Calendar = () => {
               </div>
               {timeSlots.map((slot) => {
                 const formattedDate = formatDate(day);
-                const isBookedByPatient = isSlotBookedByPatient(formattedDate, slot.index);
-                const isBookedByOthers = isSlotBookedByOthers(formattedDate, slot.index);
+                const isBookedByPatient = isSlotBookedByPatient(
+                  formattedDate,
+                  slot.index
+                );
+                const isBookedByOthers = isSlotBookedByOthers(
+                  formattedDate,
+                  slot.index
+                );
                 const isPast = isPastDate(day);
 
-                 console.log(`Slot ${slot.index} on ${formattedDate}:`, {
-
+                console.log(`Slot ${slot.index} on ${formattedDate}:`, {
                   isBookedByPatient,
                   isBookedByOthers,
                   isPast,
-                  appointments: appointments.filter(a => a.Date === formattedDate && a.StartTime === slot.index)
+                  appointments: appointments.filter(
+                    (a) =>
+                      a.Date === formattedDate && a.StartTime === slot.index
+                  ),
                 });
 
                 let slotClass = "time-slot";
@@ -353,16 +373,10 @@ const Calendar = () => {
 
       <footer className="calendar-footer">
         <div className="nav-buttons">
-          <button 
-            className="nav-button"
-            onClick={() => navigate('/')}
-          >
+          <button className="nav-button" onClick={() => navigate("/landing")}>
             Go back home
           </button>
-          <button 
-            className="nav-button"
-            onClick={() => navigate('/AssistAI')}
-          >
+          <button className="nav-button" onClick={() => navigate("/AssistAI")}>
             Try MediBot
           </button>
         </div>

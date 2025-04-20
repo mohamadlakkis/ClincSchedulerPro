@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import '../styles/home.css';
 
 function Home() {
   const navigate = useNavigate();
@@ -9,13 +10,35 @@ function Home() {
   };
 
   return (
-    <div>
-      <h1>Welcome to the App</h1>
-      <h2>Are you a new member</h2>
-      <button onClick={() => handleLogin('signup')}>Sign Up</button>
+    <div className="home-container">
+      <div className="home-content">
+        <h1 className="home-title">Welcome to ClinicScheduler Pro</h1>
+        <p className="home-subtitle">
+          Your AI-powered medical assistant for smarter healthcare management
+        </p>
+        
+        <div className="auth-buttons">
+          <div className="auth-section">
+            <h2>New to ClinicScheduler?</h2>
+            <button
+              className="auth-button signup-button"
+              onClick={() => handleLogin('signup')}
+            >
+              Create an Account
+            </button>
+          </div>
 
-      <h2>Already Have an account</h2>
-      <button onClick={() => handleLogin('login')}>Login</button>
+          <div className="auth-section">
+            <h2>Already Have an Account?</h2>
+            <button
+              className="auth-button login-button"
+              onClick={() => handleLogin('login')}
+            >
+              Sign In
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
