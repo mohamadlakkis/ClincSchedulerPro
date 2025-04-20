@@ -214,9 +214,7 @@ def registerPatient(auth_register: SignUpPatient):
     try:
         cursor = connection.cursor(dictionary=True)
         # Check if the email already exists in the Patients table
-        print("hello")
         cursor.execute("SELECT * FROM Patients WHERE Email = %s", (auth_register.Email,))
-        print("hello2")
         existing_user = cursor.fetchone()
         if existing_user:
             raise HTTPException(
@@ -572,9 +570,71 @@ def deleteAppointment(input: deleteAppointmentInput):
 
 @app.post("/allAppointmentsForDoctor")
 def allAppointmentsForDoctor(input: allAppointmentsForDoctorInput):
+    """
+    Documentation:
+      - For a particular doctor, show all appointment slots for the
+        next five days starting from `input.Date`.
+      - Split into: 
+         * appointment_null_patient  (no patient yet; but doctor available)
+         * appointments_booked       (already booked)
+    """
+    # 1) parse the input date and compute the 5‑day window
+    try:
+        start_date = datetime.strptime(input.Date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Date must be YYYY‑MM‑DD")
+    end_date = start_date + timedelta(days=5)
+
+    conn = get_connection()
+    if conn is None:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    try:
+        cursor = conn.cursor()
+
+        # 2) fetch all slots without a patient
+        cursor.execute(
+            """
+            SELECT Date, startTime, feedback
+              FROM Appointments
+             WHERE DoctorId  = %s
+               AND PatientId IS NULL
+               AND Date BETWEEN %s AND %s
+            """,
+            (input.DoctorId, start_date, end_date)
+        )
+        appointment_null_patient = cursor.fetchall()
+
+        # 3) fetch all slots already booked
+        cursor.execute(
+            """
+            SELECT Date, startTime, PatientId, feedback
+              FROM Appointments
+             WHERE DoctorId    = %s
+               AND PatientId  IS NOT NULL
+               AND Date BETWEEN %s AND %s
+            """,
+            (input.DoctorId, start_date, end_date)
+        )
+        appointments_booked = cursor.fetchall()
+
+        return {
+            "appointment_null_patient": appointment_null_patient,
+            "appointments_booked":     appointments_booked
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.post("/availableforPatient")
+def availableforPatient(input: availableforPatientInput):
     '''
     Documentation: 
-        - For a particular doctor, show all appointments for this week !
+        - to check if a doctor is available for the week return only the appointments that are not booked
     '''
     connection = get_connection()
     if connection is None:
@@ -583,18 +643,16 @@ def allAppointmentsForDoctor(input: allAppointmentsForDoctorInput):
         cursor = connection.cursor()
         current_date = input.Date
         next_5_days = (datetime.strptime(current_date, "%Y-%m-%d") + timedelta(days=5)).strftime("%Y-%m-%d")
-        cursor.execute("SELECT Date,startTime,PatientId,feedback FROM Appointments WHERE DoctorId = %s AND Date >= %s AND Date <= %s",
+        cursor.execute("SELECT Date,startTime FROM Appointments WHERE DoctorId = %s AND PatientId IS NULL AND Date >= %s AND Date <= %s",
                        (input.DoctorId, input.Date, next_5_days))
         appointments = cursor.fetchall()
-        return {
-            "appointments" : appointments
-        }
+        return {"appointments_green": appointments}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    finally:    
+    finally:
         cursor.close()
         connection.close()
-
+        
 # Chatbot Endpoint:
 @app.post("/addPDFToVB")
 async def addDocumentToVB(file: UploadFile = File(description="Upload a PDF file of the document you want to add")):
