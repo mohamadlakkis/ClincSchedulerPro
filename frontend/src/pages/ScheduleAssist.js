@@ -7,18 +7,16 @@ function ScheduleAssist() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [appointmentDetails, setAppointmentDetails] = useState({
-    doctorId: null,
-    patientId: null,
-    date: null,
-    startTime: null,
-  });
+  const [patientId, setPatientId] = useState(null);
   const messagesEndRef = useRef(null);
 
-  // Load messages from localStorage when component mounts
+  // Load user ID and messages from localStorage when component mounts
   useEffect(() => {
+    const userId = localStorage.getItem("userId");
+    setPatientId(userId);
+    
     const savedMessages = localStorage.getItem(
-      `schedulerBotChat_${localStorage.getItem("userId")}`
+      `schedulerBotChat_${userId}`
     );
     if (savedMessages) {
       setMessages(JSON.parse(savedMessages));
@@ -36,13 +34,13 @@ function ScheduleAssist() {
 
   // Save messages to localStorage whenever they change
   useEffect(() => {
-    if (messages.length > 0) {
+    if (messages.length > 0 && patientId) {
       localStorage.setItem(
-        `schedulerBotChat_${localStorage.getItem("userId")}`,
+        `schedulerBotChat_${patientId}`,
         JSON.stringify(messages)
       );
     }
-  }, [messages]);
+  }, [messages, patientId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -60,19 +58,25 @@ function ScheduleAssist() {
   };
 
   const processUserInput = async (userInput) => {
+    if (!patientId) {
+      return {
+        text: "You need to be logged in as a patient to use this service. Please log in first.",
+        action: "error",
+      };
+    }
+
     try {
+      // Use proper POST request with JSON body to send both patientId and input
       const response = await fetch(
-        `http://localhost:8001/schedulerBotEndpoint?input=${encodeURIComponent(
-          userInput
-        )}&PatientID=${encodeURIComponent(localStorage.getItem("userId"))}`,
+        "http://localhost:8001/schedulerBotEndpoint",
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            user_message: userInput,
-            PatientID: localStorage.getItem("userId"), // Get patient ID from localStorage
+            input: userInput,
+            PatientID: patientId
           }),
         }
       );
@@ -131,9 +135,9 @@ function ScheduleAssist() {
 
   // Add clear chat functionality
   const clearChat = () => {
-    localStorage.removeItem(
-      `schedulerBotChat_${localStorage.getItem("userId")}`
-    );
+    if (patientId) {
+      localStorage.removeItem(`schedulerBotChat_${patientId}`);
+    }
     setMessages([
       {
         text: "Hello! I'm your scheduling assistant. I can help you book an appointment with a doctor. Would you like to schedule an appointment?",
@@ -194,8 +198,8 @@ function ScheduleAssist() {
       </form>
 
       <footer className="chat-footer">
-        <button onClick={() => navigate("/calender")} className="nav-button">
-          Go to Calendar
+        <button onClick={() => navigate("/doctors")} className="nav-button">
+          Browse Doctors
         </button>
         <button onClick={() => navigate("/landing")} className="nav-button">
           Go back home

@@ -8,6 +8,10 @@ function Landing({ onSignOut }) {
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeFeature, setActiveFeature] = useState(0);
+  const [userName, setUserName] = useState("");
+  const [userType, setUserType] = useState("");
+  const [userId, setUserId] = useState("");
+  
   const features = [
     {
       title: "AI-Powered Medical Assistant",
@@ -32,9 +36,53 @@ function Landing({ onSignOut }) {
   ];
 
   const handleSignOut = () => {
-    onSignOut();
-    navigate('/');
+    // Clear all user-related data from localStorage
+    localStorage.removeItem('token');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userType');
+    localStorage.removeItem('userEmail');
+    
+    // Redirect to the home page
+    navigate('/', { replace: true });
   };
+
+  useEffect(() => {
+    // Get userType and userId from localStorage
+    const storedUserType = localStorage.getItem('userType');
+    const storedUserId = localStorage.getItem('userId');
+    setUserType(storedUserType || "patient");
+    setUserId(storedUserId || "");
+    
+    // Fetch user name based on user type
+    const fetchUserName = async () => {
+      try {
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
+          console.error('No user ID found');
+          return;
+        }
+
+        const userTypeEndpoint = storedUserType === "doctor" ? "getDoctors" : "getPatients";
+        const response = await fetch(`http://localhost:8001/${userTypeEndpoint}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch user data');
+        }
+        
+        const data = await response.json();
+        const users = storedUserType === "doctor" ? data.doctors : data.patients;
+        const user = users.find(u => u[storedUserType === "doctor" ? "DoctorId" : "PatientId"] === userId);
+        
+        if (user) {
+          setUserName(storedUserType === "doctor" ? user.DoctorName : user.PatientName);
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+
+    fetchUserName();
+  }, []);
 
   useEffect(() => {
     const fetchAppointments = async () => {
@@ -112,13 +160,32 @@ function Landing({ onSignOut }) {
     });
   };
 
+  const handleCalendarAction = () => {
+    if (userType === "doctor") {
+      navigate("/calender");
+    } else {
+      navigate("/doctors");
+    }
+  };
+  
+  const handleScheduleAssist = () => {
+    // Make sure patient ID is in localStorage before navigating
+    if (userType === "patient" && userId) {
+      // Navigate to schedule assistant
+      navigate("/schedule-assist");
+    } else {
+      alert("You need to be logged in as a patient to book appointments");
+    }
+  };
+  
+
   return (
     <div className="app-container">
       <NavBar />
       <div className="main-content">
         <header className="landing-header">
           <div className="header-content">
-            <h1>Welcome to ClinicScheduler Pro</h1>
+            <h1>Welcome {userName}</h1>
             <p className="subtitle">
               Your AI-powered medical assistant for smarter healthcare management
             </p>
@@ -188,19 +255,25 @@ function Landing({ onSignOut }) {
                   <p>Book appointments through natural conversation</p>
                   <button
                     className="primary-button"
-                    onClick={() => navigate("/schedule-assist")}
+                    onClick={handleScheduleAssist}
                   >
                     Book Appointment
                   </button>
                 </div>
-              </div>
-              <div className="cta-buttons">
-                <button
-                  className="secondary-button"
-                  onClick={() => navigate("/calender")}
-                >
-                  View Calendar
-                </button>
+                <div className="assistant-card">
+                  <h3>{userType === "doctor" ? "Set Availability" : "Manual Booking"}</h3>
+                  <p>
+                    {userType === "doctor" 
+                      ? "Manage your schedule and set your availability for appointments" 
+                      : "Browse doctors and book appointments directly"}
+                  </p>
+                  <button
+                    className="primary-button"
+                    onClick={handleCalendarAction}
+                  >
+                    {userType === "doctor" ? "Set Your Availability" : "Manually Book with a Doctor"}
+                  </button>
+                </div>
               </div>
             </div>
           </section>

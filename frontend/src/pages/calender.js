@@ -9,11 +9,10 @@ const Calendar = () => {
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const [appointments, setAppointments] = useState([]);
   const [blueAppointments, setBlueAppointments] = useState([]);
   const [redAppointments, setRedAppointments] = useState([]);
-  const PATIENT_ID = "0000001";
   const DOCTOR_ID = location.state?.doctorId;
+  const PATIENT_ID = location.state?.patientId || null; // Default to 1 if not provided
 
   const timeSlots = Array.from({ length: 18 }, (_, i) => {
     const totalMinutes = 9 * 60 + i * 30;
@@ -333,7 +332,7 @@ const Calendar = () => {
                   isBookedByPatient,
                   isBookedByOthers,
                   isPast,
-                  appointments: appointments.filter(
+                  appointments: [...blueAppointments, ...redAppointments].filter(
                     (a) =>
                       a.Date === formattedDate && a.StartTime === slot.index
                   ),
