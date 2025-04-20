@@ -515,6 +515,7 @@ def book_appointment(input: bookAppointmentInput):
     finally:
         cursor.close()
         conn.close()
+
 @app.post("/showOneDoctorAllPatients")
 def showOneDoctorAllPatients(input: showOneDoctorAllPatientsInput):
     '''
@@ -566,6 +567,31 @@ def deleteAppointment(input: deleteAppointmentInput):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
+        cursor.close()
+        connection.close()
+
+@app.post("/allAppointmentsForDoctor")
+def allAppointmentsForDoctor(input: allAppointmentsForDoctorInput):
+    '''
+    Documentation: 
+        - For a particular doctor, show all appointments for this week !
+    '''
+    connection = get_connection()
+    if connection is None:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    try:
+        cursor = connection.cursor()
+        current_date = input.Date
+        next_5_days = (datetime.strptime(current_date, "%Y-%m-%d") + timedelta(days=5)).strftime("%Y-%m-%d")
+        cursor.execute("SELECT Date,startTime,PatientId,feedback FROM Appointments WHERE DoctorId = %s AND Date >= %s AND Date <= %s",
+                       (input.DoctorId, input.Date, next_5_days))
+        appointments = cursor.fetchall()
+        return {
+            "appointments" : appointments
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:    
         cursor.close()
         connection.close()
 
