@@ -289,19 +289,19 @@
 }
 
 .available-legend {
-  background-color: #4caf50; /* Green */
+  background-color: #4bc04f; /* Green */
 }
 
 .user-booked-legend {
-  background-color: #90caf9; /* Blue */
+  background-color: #41aaff; /* Blue */
 }
 
 .booked-legend {
-  background-color: #f44336; /* Red */
+  background-color: #a7241b; /* Red */
 }
 
 .unavailable-legend {
-  background-color: #ffccdc; /* Pink */
+  background-color: #b88c9a; /* Pink */
 }
 
 .past-legend {

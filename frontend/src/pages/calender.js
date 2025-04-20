@@ -13,9 +13,28 @@ const Calendar = () => {
   const [redAppointments, setRedAppointments] = useState([]);
   const [greenAppointments, setGreenAppointments] = useState([]); // Available appointments
   
-  const DOCTOR_ID = localStorage.getItem('userId') || location.state?.doctorId;
-  const PATIENT_ID = localStorage.getItem('userId') || location.state?.patientId || null;
-  const USER_TYPE = localStorage.getItem('userType') || (location.state?.doctorId ? "doctor" : "patient");
+  // Fix ID handling to properly differentiate between doctor and patient
+  const userType = localStorage.getItem('userType');
+  
+  // If we're coming from the doctors page, use the doctorId from location state
+  // If we're a doctor user, use our own ID as the doctor ID
+  const DOCTOR_ID = location.state?.doctorId || 
+                   (userType === 'doctor' ? localStorage.getItem('userId') : null);
+  
+  // For patient ID, always use the logged-in user's ID if they're a patient
+  const PATIENT_ID = userType === 'patient' ? localStorage.getItem('userId') : null;
+  
+  // For user type, determine based on localStorage or fallback to location state logic
+  const USER_TYPE = userType || (location.state?.doctorId ? "patient" : "doctor");
+
+  // For debugging purposes
+  console.log("Calendar Component IDs:", { 
+    DOCTOR_ID, 
+    PATIENT_ID, 
+    USER_TYPE, 
+    locationState: location.state,
+    userTypeFromStorage: userType 
+  });
 
   const timeSlots = Array.from({ length: 18 }, (_, i) => {
     const totalMinutes = 9 * 60 + i * 30;
