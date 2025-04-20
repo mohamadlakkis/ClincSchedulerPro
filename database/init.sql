@@ -11,7 +11,8 @@ CREATE TABLE Doctors (
   DoctorSpecialty VARCHAR(100) NOT NULL,
   Email         VARCHAR(100)  NOT NULL,
   Password      VARCHAR(100)  NOT NULL,
-  PRIMARY KEY (DoctorId)
+  PRIMARY KEY (DoctorId), 
+  CONSTRAINT UQ_Doctors_Email UNIQUE (Email)
 );
 
 CREATE TABLE Patients (
@@ -22,14 +23,15 @@ CREATE TABLE Patients (
   Gender        CHAR(1)       NOT NULL,
   Email         VARCHAR(100)  NOT NULL,
   Password      VARCHAR(100)  NOT NULL,
-  PRIMARY KEY (PatientId)
+  PRIMARY KEY (PatientId),
+  CONSTRAINT UQ_Patients_Email UNIQUE (Email)
 );
 
 CREATE TABLE Appointments (
   id            INT           NOT NULL AUTO_INCREMENT,
   Date          DATE          NOT NULL,
   startTime     INT           NOT NULL,
-  PatientId     INT           NOT NULL,
+  PatientId     INT,
   DoctorId      INT           NOT NULL,
   feedback      TEXT,
   PRIMARY KEY (id),

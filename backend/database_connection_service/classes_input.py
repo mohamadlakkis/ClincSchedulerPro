@@ -16,11 +16,10 @@ class addPatientInput(BaseModel):
     Email: str
     Password: str
 
-class addAppointmentInput(BaseModel):
-    PatientId: int 
+class insertAvailabilityofDoctorInput(BaseModel):
+    DoctorId: int
     Date: str = "2023-10-01"
     startTime: int = 1
-    feedback: Optional[str] = ""
 
 class showOneDoctorAllPatientsInput(BaseModel): 
     DoctorId: int   
@@ -30,7 +29,7 @@ class showOneDoctorAllPatientsInput(BaseModel):
 class deleteAppointmentInput(BaseModel): 
     PatientId: int
     DoctorId: int
-    Date: str
+    Date: str = "2023-10-01"
     startTime: int
 
 class getAllAppointmentsForPatientInput(BaseModel):
@@ -39,3 +38,19 @@ class getAllAppointmentsForPatientInput(BaseModel):
 class mediBotRagInput(BaseModel): 
     userQuestions: str
     PatientId: int
+
+class DeleteAvailabilityOfDoctorInput(BaseModel):
+    DoctorId: int
+    Date: str = "2025-04-21"
+    startTime: int
+
+
+class bookAppointmentInput(BaseModel):
+    PatientId: int
+    DoctorId: int
+    Date: str = "2025-04-21"
+    startTime: int
+
+class checkAppointmentInput(BaseModel):
+    PatientId: int
+    Date: str = "2025-04-21"
