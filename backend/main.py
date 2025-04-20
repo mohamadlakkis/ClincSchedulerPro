@@ -1,9 +1,8 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from database_connection_service.db_connection import get_connection
 from database_connection_service.classes_input import *
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from medibot_RAG_service.mediBot import mediBotRag , initializeState, vector_store
 from langgraph.types import Command
 from langchain_community.document_loaders import PyPDFLoader
@@ -13,8 +12,6 @@ from bot_scheduler_service.schedulerBot import schedulerBotFunction
 from auth.classesInput import loginInput, SignUpPatient, SignUpDoctor
 from auth.extensions import check_password_hash, generate_password_hash
 import os
-import jwt
-
 # user information
 config = {"configurable": {"thread_id": "1"}}
 SECRET_KEY = os.getenv('SECRET_KEY')
@@ -33,40 +30,39 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all HTTP methods, including OPTIONS
     allow_headers=["*"],
 )
-### Security ###
-security = HTTPBearer()
-def decode_token(token):
-    payload = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
-    return payload['sub']
-def create_token(user_id):
-    payload = {
-        'exp': datetime.now() + timedelta(days=4),
-        'iat': datetime.now(),
-        'sub': str(user_id)
-    }
-    return jwt.encode(
-        payload,
-        SECRET_KEY,
-        algorithm='HS256'
-    )
-def get_current_user(token: HTTPAuthorizationCredentials = Depends(security)):
-    '''Wrote this here as a function to simplify the code, and avoid repetition of the try/except block'''
-    '''This function will be used as a dependency in the endpoints that require authentication'''
-    '''If the token is valid, get_current_user decodes it and returns the user_id'''
+
+### Helper Functions ###
+def compute_week_bounds(appt_date: date):
+    monday = appt_date - timedelta(days=appt_date.weekday())
+    friday = monday + timedelta(days=4)
+    return monday, friday
+
+def find_weekly_appointment(patient_id: int, appt_date: date) -> Optional[dict]:
+    """
+    Returns the first appointment row for this patient between Monday and Friday of the given week,
+    or None if no such appointment exists.
+    """
+    monday, friday = compute_week_bounds(appt_date)
+    conn = get_connection()
+    if conn is None:
+        raise HTTPException(status_code=500, detail="Database connection failed")
     try:
-        # token.credentials contains the token string from the header.
-        user_id = decode_token(token.credentials)
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Token expired"
+        # Use a dict cursor so that fetchone() returns a dict
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT id, PatientId, DoctorId, Date, startTime
+              FROM Appointments
+             WHERE PatientId = %s
+               AND Date BETWEEN %s AND %s
+            """,
+            (patient_id, monday, friday)
         )
-    except jwt.InvalidTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="Invalid token"
-        )
-    return user_id
+        return cursor.fetchone()  # dict or None
+    finally:
+        cursor.close()
+        conn.close()
+
 
 # Login and Register Endpoints:
 
@@ -83,9 +79,8 @@ def loginAdmin(auth_request: loginInput):
         raise HTTPException(status_code=500, detail="Database connection failed")
     try:
         cursor = connection.cursor(dictionary=True)
-        tables = ["Admin"] # ["Admins", "Doctors", "Patients"]
+        tables = ["Admin"] 
         user = None
-        user_type = None
         for table in tables:
             print(f"Checking table: {table}")
             cursor.execute(
@@ -93,7 +88,6 @@ def loginAdmin(auth_request: loginInput):
             user = cursor.fetchone()
             print(f"User found: {user}")
             if user:
-                user_type = table
                 break
         if not user:
             raise HTTPException(
@@ -105,15 +99,7 @@ def loginAdmin(auth_request: loginInput):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Incorrect password"
             )
-        # # Check if the provided password matches the hashed password in the database
-        # if not check_password_hash(generate_password_hash(user['Password']), auth_request.password):
-        #     raise HTTPException(
-        #         status_code=status.HTTP_403_FORBIDDEN,
-        #         detail="Incorrect password"
-        #     )
-        # token = create_token(user['UserId']) # create for this user_id a token, that lasts 4 days!
-        token = "still testing"
-        return {"token": token, "user_type": user_type, "adminEmail": user['email']}
+        return {"results": "Successfully logged in"}
     except Exception as e:  
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -395,43 +381,140 @@ def getAllAppointmentsForPatient(input: getAllAppointmentsForPatientInput):
         cursor.close()
         connection.close()
 
-@app.post("/insertAppointment")
-def insertAppointment(input: addAppointmentInput):
+@app.post("/insertAvailabilityofDoctor")
+def insertAvailabilityofDoctor(input: insertAvailabilityofDoctorInput):
     '''
     Documentation: 
-        - insert an appointment between a doctor and patient at a particular date and time 
+        - insert availibity of Doctor.
     '''
     connection = get_connection()
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
     try:
         cursor = connection.cursor()
-        # Check if the doctor is available in the current timing
-        cursor.execute("SELECT * FROM Appointments WHERE DoctorId = %s AND Date = %s AND startTime = %s",
-                       (input.DoctorId, input.Date, input.startTime))
-        if cursor.fetchone():
-            raise HTTPException(status_code=400, detail="Doctor is not available at the selected time")
-        # Check if the patient has an appointment at the same time
-        cursor.execute("SELECT * FROM Appointments WHERE PatientId = %s AND Date = %s AND startTime = %s",
-                       (input.PatientId, input.Date, input.startTime))
-        if cursor.fetchone():
-            raise HTTPException(status_code=400, detail="Patient already has an appointment at the selected time")
-        # Insert the appointment
         query = """
 
-            INSERT INTO Appointments (DoctorId, PatientId, Date, startTime, feedback)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO Appointments (DoctorId, Date, startTime)
+            VALUES (%s, %s, %s)
         """
-        values = (input.DoctorId, input.PatientId, input.Date, input.startTime, input.feedback)
+        values = (input.DoctorId, input.Date, input.startTime)
         cursor.execute(query, values)
         connection.commit()
-        return {"message": "Appointment added successfully"}
+        return {"message": "Availability added successfully"}
     except Exception as e:  
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
         connection.close()
 
+@app.delete("/deleteAvailabilityofDoctor")
+def deleteAvailabilityofDoctor(input: DeleteAvailabilityOfDoctorInput):
+    """
+    Documentation:
+        - delete availability of a doctor for a given date and start time.
+    """
+    connection = get_connection()
+    if connection is None:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    try:
+        cursor = connection.cursor()
+        delete_query = """
+            DELETE FROM Appointments
+             WHERE DoctorId = %s
+               AND Date     = %s
+               AND startTime = %s
+        """
+        cursor.execute(delete_query, (input.DoctorId, input.Date, input.startTime))
+        if cursor.rowcount == 0:
+            # No matching row to delete
+            raise HTTPException(status_code=404, detail="No matching availability found")
+        connection.commit()
+        return {"message": "Availability deleted successfully"}
+    except HTTPException:
+        # re‑raise 404 or other HTTPExceptions
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        connection.close()
+
+@app.post("/checkIfAnotherAppointmentSameWeek")
+def check_if_another_appointment_same_week(input: checkAppointmentInput):
+    """
+    Check if the given patient already has an appointment in the same Mon–Fri week, 
+    """
+    # 1) parse the date
+    try:
+        appt_date = datetime.fromisoformat(input.Date).date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Date must be in YYYY-MM-DD format")
+
+    # 2) look up any existing appointment
+    existing = find_weekly_appointment(input.PatientId, appt_date)
+    return {
+        "hasAppointment": existing is not None,
+        "appointment": existing
+    }
+
+@app.post("/bookAppointment")
+def book_appointment(input: bookAppointmentInput):
+    """
+    Book an existing availability slot by updating its PatientId.
+    Enforces at most one appointment per patient Mon–Fri.
+    """
+    # 1) parse & validate the requested date
+    try:
+        appt_date = datetime.fromisoformat(input.Date).date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Date must be YYYY‑MM‑DD")
+
+    # 2) enforce one‑per‑week rule
+    existing = find_weekly_appointment(input.PatientId, appt_date)
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "hasAppointment": True,
+                "appointment": str(existing)
+            }
+        )
+
+    # 3) perform the UPDATE instead of INSERT
+    conn = get_connection()
+    if conn is None:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE Appointments
+               SET PatientId = %s
+             WHERE DoctorId  = %s
+               AND Date      = %s
+               AND startTime = %s
+            """,
+            (input.PatientId, input.DoctorId, appt_date, input.startTime)
+        )
+
+        # 4) if no row was updated, the slot doesn’t exist
+        if cursor.rowcount == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="Doctor is not available at this time"
+            )
+
+        conn.commit()
+        return {"message": "Appointment booked successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
 @app.post("/showOneDoctorAllPatients")
 def showOneDoctorAllPatients(input: showOneDoctorAllPatientsInput):
     '''

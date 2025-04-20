@@ -31,7 +31,7 @@ CREATE TABLE Appointments (
   id            INT           NOT NULL AUTO_INCREMENT,
   Date          DATE          NOT NULL,
   startTime     INT           NOT NULL,
-  PatientId     INT           NOT NULL,
+  PatientId     INT,
   DoctorId      INT           NOT NULL,
   feedback      TEXT,
   PRIMARY KEY (id),
