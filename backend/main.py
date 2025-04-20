@@ -548,7 +548,7 @@ def showOneDoctorAllPatients(input: showOneDoctorAllPatientsInput):
 def deleteAppointment(input: deleteAppointmentInput):   
     '''
     Documentation: 
-        - to delete an appointment between patient and doctor at a particular day and time
+        - to delete an appointment between patient and doctor at a particular day and time, note: it will keep the doctor available during this time, so the doctor can be booked by other patients
     '''
     connection = get_connection()
     if connection is None:
@@ -556,7 +556,13 @@ def deleteAppointment(input: deleteAppointmentInput):
     try:
         cursor = connection.cursor()
         query = """
-            DELETE FROM Appointments WHERE PatientId = %s AND DoctorId = %s AND Date = %s AND startTime = %s
+            UPDATE Appointments
+                SET PatientId = NULL
+                WHERE PatientId = %s
+                AND DoctorId  = %s
+                AND Date      = %s
+                AND startTime = %s
+
         """
         values = (input.PatientId, input.DoctorId, input.Date, input.startTime)
         cursor.execute(query, values)
