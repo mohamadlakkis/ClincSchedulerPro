@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, status
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from database_connection_service.db_connection import get_connection
 from database_connection_service.classes_input import *
@@ -8,10 +8,12 @@ from langgraph.types import Command
 from langchain_community.document_loaders import PyPDFLoader
 from tempfile import NamedTemporaryFile
 from fastapi.middleware.cors import CORSMiddleware
-from bot_scheduler_service.schedulerBot import schedulerBotFunction
 from auth.classesInput import loginInput, SignUpPatient, SignUpDoctor
-from auth.extensions import check_password_hash, generate_password_hash
 import os
+from utilities.helperMain import RateLimiter
+from fetch_news_service.fetch_news import fetch_articles
+from bot_scheduler_service.bot_v2 import schedulerBotV2
+
 # user information
 config = {"configurable": {"thread_id": "1"}}
 SECRET_KEY = os.getenv('SECRET_KEY')
@@ -660,7 +662,7 @@ def availableforPatient(input: availableforPatientInput):
         connection.close()
         
 # Chatbot Endpoint:
-@app.post("/addPDFToVB")
+@app.post("/addPDFToVB", dependencies=[Depends(RateLimiter(60, 60))])
 async def addDocumentToVB(file: UploadFile = File(description="Upload a PDF file of the document you want to add")):
     '''restricted to admins only'''
     '''
@@ -687,7 +689,7 @@ async def addDocumentToVB(file: UploadFile = File(description="Upload a PDF file
         raise HTTPException(status_code=500, detail=str(e))
     return {"message": "Document added successfully"}
 
-@app.post("/mediBotRagEndpoint")
+@app.post("/mediBotRagEndpoint", dependencies=[Depends(RateLimiter(10, 60))])
 def mediBotRagEndpoint(input: mediBotRagInput):
     '''
     Documentation: 
@@ -699,7 +701,12 @@ def mediBotRagEndpoint(input: mediBotRagInput):
     return {"answer": h['answersAI'][-1]}
 
 # Scheduler Bot Endpoint:
-@app.post("/schedulerBotEndpoint")
+@app.post("/schedulerBotEndpoint", dependencies=[Depends(RateLimiter(10, 60))])
 def schedulerBotEndpoint(input:str, PatientID: str): 
-    res = schedulerBotFunction(input, PatientID)
-    return {"answer": res}
+    res,t = schedulerBotV2(input_message=input, PatientId=PatientID)
+    return {"answer": res, "Doctor_Details": t}
+
+# News 
+@app.get("/news/MedicalField",summary="Medical Field News",description="Fetch the latest articles about Medical Field. Returns up to `page_size` items, each with a title and URL, and a small desciption of the article.", dependencies=[Depends(RateLimiter(60, 60))])
+async def get_usd_news(page_size: int = Query(10, ge=1, le=100)):
+    return fetch_articles("Medical Field News:", page_size)

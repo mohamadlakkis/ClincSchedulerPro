@@ -45,6 +45,4 @@ CREATE TABLE Appointments (
 
 
 INSERT INTO Admin (name, email, password) VALUES 
-('Alice Johnson', 'alice.johnson@example.com', 'password123'),
-('Bob Smith', 'bob.smith@example.com', 'securepass456'),
-('Carol Davis', 'carol.davis@example.com', 'mypassword789');
+('mohamad', 'lakkis@gmail.com', '123456');
