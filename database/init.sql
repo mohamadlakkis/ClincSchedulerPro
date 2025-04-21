@@ -44,5 +44,20 @@ CREATE TABLE Appointments (
 );
 
 
+CREATE TABLE Donors (
+  DonorId         INT            NOT NULL AUTO_INCREMENT,
+  DonorName       VARCHAR(100)   NOT NULL,
+  DonorInfo       TEXT,
+  Email           VARCHAR(100)   NOT NULL,
+  PhoneNumber     VARCHAR(20),
+  AmountDonated   DECIMAL(10, 2) NOT NULL,
+  DonationDate    DATE           NOT NULL,
+  PrivateDonation BOOLEAN        NOT NULL DEFAULT FALSE,
+  PRIMARY KEY (DonorId),
+  CONSTRAINT UQ_Donors_Email UNIQUE (Email)
+);
+
+
+
 INSERT INTO Admin (name, email, password) VALUES 
 ('mohamad', 'lakkis@gmail.com', '123456');

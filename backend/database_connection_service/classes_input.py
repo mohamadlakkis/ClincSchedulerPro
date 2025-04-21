@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+from datetime import date
 
 class addDoctorInput(BaseModel):
     DoctorName: str
@@ -62,3 +63,12 @@ class allAppointmentsForDoctorInput(BaseModel):
 class availableforPatientInput(BaseModel): 
     DoctorId: int
     Date: str = "2025-04-21"
+
+class AddDonationInput(BaseModel):
+    DonorName: str
+    DonorInfo: Optional[str] = None
+    Email: str
+    PhoneNumber: Optional[str] = None
+    AmountDonated: float
+    DonationDate: date
+    PrivateDonation: bool

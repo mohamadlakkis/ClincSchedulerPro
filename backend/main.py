@@ -710,3 +710,76 @@ def schedulerBotEndpoint(input:str, PatientID: str):
 @app.get("/news/MedicalField",summary="Medical Field News",description="Fetch the latest articles about Medical Field. Returns up to `page_size` items, each with a title and URL, and a small desciption of the article.", dependencies=[Depends(RateLimiter(60, 60))])
 async def get_usd_news(page_size: int = Query(10, ge=1, le=100)):
     return fetch_articles("Medical Field News:", page_size)
+
+
+# Donors: 
+@app.post("/addDonation")
+def add_donation(input: AddDonationInput):
+    """
+    Add a donation record to the Donors table.
+    If a donor with the same email already exists, update their donation info.
+    """
+    conn = get_connection()
+    if conn is None:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO Donors (DonorName, DonorInfo, Email, PhoneNumber, AmountDonated, DonationDate, PrivateDonation)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                DonorName = VALUES(DonorName),
+                DonorInfo = VALUES(DonorInfo),
+                PhoneNumber = VALUES(PhoneNumber),
+                AmountDonated = VALUES(AmountDonated),
+                DonationDate = VALUES(DonationDate),
+                PrivateDonation = VALUES(PrivateDonation)
+            """,
+            (
+                input.DonorName,
+                input.DonorInfo,
+                input.Email,
+                input.PhoneNumber,
+                input.AmountDonated,
+                input.DonationDate,
+                input.PrivateDonation
+            )
+        )
+        conn.commit()
+        return {"message": "Donation recorded successfully"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
+
+@app.get("/getPublicDonations")
+def get_public_donations():
+    """
+    Retrieve all donations that are not marked as private.
+    Returns donor name, amount donated, and donation date.
+    """
+    conn = get_connection()
+    if conn is None:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    try:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            """
+            SELECT DonorName, AmountDonated, DonationDate
+              FROM Donors
+             WHERE PrivateDonation = FALSE
+            """
+        )
+        donations = cursor.fetchall()
+        return {"public_donations": donations}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        conn.close()
