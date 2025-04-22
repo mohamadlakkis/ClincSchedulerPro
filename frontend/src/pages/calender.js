@@ -370,6 +370,7 @@ const Calendar = () => {
         body: JSON.stringify({
           PatientId: parseInt(PATIENT_ID, 10),
           Date: selectedSlot.date,
+          DoctorId: parseInt(DOCTOR_ID, 10)
         }),
       });
 
