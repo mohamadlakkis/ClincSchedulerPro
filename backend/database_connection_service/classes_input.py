@@ -55,6 +55,7 @@ class bookAppointmentInput(BaseModel):
 class checkAppointmentInput(BaseModel):
     PatientId: int
     Date: str = "2025-04-21"
+    DoctorId:int
 
 class allAppointmentsForDoctorInput(BaseModel):
     DoctorId: int

@@ -39,7 +39,7 @@ def compute_week_bounds(appt_date: date):
     friday = monday + timedelta(days=4)
     return monday, friday
 
-def find_weekly_appointment(patient_id: int, appt_date: date) -> Optional[dict]:
+def find_weekly_appointment(patient_id: int, appt_date: date, doctorId: int) -> Optional[dict]:
     """
     Returns the first appointment row for this patient between Monday and Friday of the given week,
     or None if no such appointment exists.
@@ -56,9 +56,10 @@ def find_weekly_appointment(patient_id: int, appt_date: date) -> Optional[dict]:
             SELECT id, PatientId, DoctorId, Date, startTime
               FROM Appointments
              WHERE PatientId = %s
-               AND Date BETWEEN %s AND %s
+               AND Date BETWEEN %s AND %s 
+               AND DoctorId = %s
             """,
-            (patient_id, monday, friday)
+            (patient_id, monday, friday, doctorId)
         )
         return cursor.fetchone()  # dict or None
     finally:
@@ -451,7 +452,7 @@ def check_if_another_appointment_same_week(input: checkAppointmentInput):
         raise HTTPException(status_code=400, detail="Date must be in YYYY-MM-DD format")
 
     # 2) look up any existing appointment
-    existing = find_weekly_appointment(input.PatientId, appt_date)
+    existing = find_weekly_appointment(input.PatientId, appt_date, input.DoctorId)
     return {
         "hasAppointment": existing is not None,
         "appointment": existing
@@ -470,7 +471,7 @@ def book_appointment(input: bookAppointmentInput):
         raise HTTPException(status_code=400, detail="Date must be YYYY‑MM‑DD")
 
     # 2) enforce one‑per‑week rule
-    existing = find_weekly_appointment(input.PatientId, appt_date)
+    existing = find_weekly_appointment(input.PatientId, appt_date, input.DoctorId)
     if existing:
         raise HTTPException(
             status_code=400,
