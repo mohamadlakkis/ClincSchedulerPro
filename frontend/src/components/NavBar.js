@@ -5,6 +5,7 @@ import "../styles/NavBar.css";
 function NavBar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [userType, setUserType] = useState("patient");
   const [isCollapsed, setIsCollapsed] = useState(() => {
     // Initialize from localStorage if available
     const saved = localStorage.getItem("navCollapsed");
@@ -22,6 +23,26 @@ function NavBar() {
       return newState;
     });
   };
+
+  // Get userType from localStorage
+  useEffect(() => {
+    const storedUserType = localStorage.getItem('userType');
+    if (storedUserType) {
+      setUserType(storedUserType);
+    }
+  }, []);
+
+  // Handle calendar navigation based on user type
+  const handleCalendarNavigation = () => {
+    if (userType === "doctor") {
+      navigate("/calender");
+    } else {
+      navigate("/doctors");
+    }
+  };
+
+  // Check if Schedule Assistant should be visible
+  const shouldShowScheduleAssistant = userType !== "doctor";
 
   // Cleanup effect to ensure proper state on mount
   useEffect(() => {
@@ -58,19 +79,31 @@ function NavBar() {
           <span className="nav-icon">🤖</span>
           {!isCollapsed && <span className="nav-text">Medical Assistant</span>}
         </button>
+        
+        {/* Only show Schedule Assistant button for patients */}
+        {shouldShowScheduleAssistant && (
+          <button
+            className={`nav-link ${isActive("/schedule-assist") ? "active" : ""}`}
+            onClick={() => navigate("/schedule-assist")}
+          >
+            <span className="nav-icon">📅</span>
+            {!isCollapsed && <span className="nav-text">Schedule Assistant</span>}
+          </button>
+        )}
+        
+        {/* Calendar button with conditional navigation */}
         <button
-          className={`nav-link ${isActive("/schedule-assist") ? "active" : ""}`}
-          onClick={() => navigate("/schedule-assist")}
-        >
-          <span className="nav-icon">📅</span>
-          {!isCollapsed && <span className="nav-text">Schedule Assistant</span>}
-        </button>
-        <button
-          className={`nav-link ${isActive("/calender") ? "active" : ""}`}
-          onClick={() => navigate("/calender")}
+          className={`nav-link ${
+            (userType === "doctor" ? isActive("/calender") : isActive("/doctors")) ? "active" : ""
+          }`}
+          onClick={handleCalendarNavigation}
         >
           <span className="nav-icon">📆</span>
-          {!isCollapsed && <span className="nav-text">Calendar</span>}
+          {!isCollapsed && (
+            <span className="nav-text">
+              {userType === "doctor" ? "Calendar" : "Browse Doctors"}
+            </span>
+          )}
         </button>
       </div>
     </nav>

@@ -46,8 +46,50 @@
 .home-subtitle {
   font-size: 1.5rem;
   color: #7f8c8d;
-  margin-bottom: 3rem;
+  margin-bottom: 2rem;
   font-weight: 400;
+}
+
+/* Feature display styles */
+.feature-display {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 15px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.feature-card {
+  text-align: center;
+  padding: 1rem;
+  position: relative;
+}
+
+.feature-icon {
+  font-size: 3em;
+  margin-bottom: 0.5rem;
+  animation: pulseAnimation 2s infinite;
+}
+
+.feature-card h2 {
+  color: #2c3e50;
+  margin-bottom: 0.5rem;
+  font-size: 1.8em;
+  transition: all 0.3s ease;
+}
+
+.feature-card p {
+  color: #7f8c8d;
+  margin: 0;
+  font-size: 1.1em;
+  line-height: 1.5;
+}
+
+@keyframes pulseAnimation {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
 
 /* User type selection styles */
@@ -142,6 +184,11 @@
   color: white;
 }
 
+.admin-button {
+  background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+  color: white;
+}
+
 .auth-button:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
@@ -158,6 +205,14 @@
 
   .home-subtitle {
     font-size: 1.2rem;
+  }
+
+  .feature-card h2 {
+    font-size: 1.5em;
+  }
+
+  .feature-icon {
+    font-size: 2.5em;
   }
 
   .auth-section h2 {
