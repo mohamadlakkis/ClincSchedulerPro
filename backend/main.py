@@ -702,8 +702,8 @@ def mediBotRagEndpoint(input: mediBotRagInput):
 
 # Scheduler Bot Endpoint:
 @app.post("/schedulerBotEndpoint", dependencies=[Depends(RateLimiter(10, 60))])
-def schedulerBotEndpoint(input:str, PatientID: str): 
-    res,t = schedulerBotV2(input_message=input, PatientId=PatientID)
+def schedulerBotEndpoint(input:str, PatientId: str): 
+    res,t = schedulerBotV2(input_message=input, PatientId=PatientId)
     return {"answer": res, "Doctor_Details": t}
 
 # News 

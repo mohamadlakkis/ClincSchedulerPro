@@ -66,7 +66,7 @@ function ScheduleAssist() {
     }
 
     try {
-      // Use proper POST request with JSON body to send both patientId and input
+      // Fix parameter name to match backend expectation (PatientId instead of PatientID)
       const response = await fetch(
         "http://localhost:8001/schedulerBotEndpoint",
         {
@@ -76,7 +76,7 @@ function ScheduleAssist() {
           },
           body: JSON.stringify({
             input: userInput,
-            PatientID: patientId
+            PatientId: patientId // Changed from PatientID to PatientId to match backend parameter
           }),
         }
       );

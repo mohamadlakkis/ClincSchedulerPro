@@ -180,8 +180,8 @@ function AssistAI() {
       </form>
 
       <footer className="chat-footer">
-        <button onClick={() => navigate("/calender")} className="nav-button">
-          Go to Calendar
+        <button onClick={() => navigate("/doctors")} className="nav-button">
+          Browse Doctors
         </button>
         <button onClick={() => navigate("/landing")} className="nav-button">
           Go back home

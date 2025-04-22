@@ -313,18 +313,44 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+.appointment-info {
+  flex: 1;
+}
+
 .appointment-date {
   font-weight: bold;
   color: #2c3e50;
 }
 
-.appointment-time {
-  color: #3498db;
-  font-weight: 500;
+.appointment-time, .appointment-doctor {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+  margin-top: 4px;
 }
 
-.appointment-doctor {
-  color: #7f8c8d;
+.appointment-actions {
+  margin-left: 15px;
+}
+
+.reschedule-button {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reschedule-button:hover {
+  background-color: #2980b9;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.reschedule-button:active {
+  transform: translateY(0);
 }
 
 .loading-message {

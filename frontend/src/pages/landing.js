@@ -7,33 +7,9 @@ function Landing({ onSignOut }) {
   const navigate = useNavigate();
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeFeature, setActiveFeature] = useState(0);
   const [userName, setUserName] = useState("");
   const [userType, setUserType] = useState("");
   const [userId, setUserId] = useState("");
-  
-  const features = [
-    {
-      title: "AI-Powered Medical Assistant",
-      description: "Get instant answers to your medical questions with our advanced AI assistant.",
-      icon: "🤖"
-    },
-    {
-      title: "Smart Appointment Scheduling",
-      description: "Book appointments through natural conversation with our scheduling assistant.",
-      icon: "📅"
-    },
-    {
-      title: "Real-time Calendar View",
-      description: "View and manage your appointments in a user-friendly calendar interface.",
-      icon: "📊"
-    },
-    {
-      title: "Secure Patient Portal",
-      description: "Access your medical information and manage your healthcare needs securely.",
-      icon: "🔒"
-    }
-  ];
 
   const handleSignOut = () => {
     // Clear all user-related data from localStorage
@@ -137,13 +113,6 @@ function Landing({ onSignOut }) {
     fetchAppointments();
   }, []);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveFeature((prev) => (prev + 1) % features.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
   const formatTime = (startTime) => {
     const hour = Math.floor(startTime / 2) + 9;
     const minutes = (startTime % 2) * 30;
@@ -177,7 +146,11 @@ function Landing({ onSignOut }) {
       alert("You need to be logged in as a patient to book appointments");
     }
   };
-  
+
+  const handleReschedule = (doctorId) => {
+    // Navigate to calendar page with the specific doctorId
+    navigate('/calender', { state: { doctorId } });
+  };
 
   return (
     <div className="app-container">
@@ -196,14 +169,6 @@ function Landing({ onSignOut }) {
         </header>
 
         <main className="landing-main">
-          <section className="feature-display">
-            <div className="feature-card">
-              <div className="feature-icon">{features[activeFeature].icon}</div>
-              <h2>{features[activeFeature].title}</h2>
-              <p>{features[activeFeature].description}</p>
-            </div>
-          </section>
-
           <section className="appointments-section">
             <div className="appointments-card">
               <h2>Your Upcoming Appointments</h2>
@@ -213,14 +178,24 @@ function Landing({ onSignOut }) {
                 <div className="appointments-list">
                   {upcomingAppointments.map((appointment, index) => (
                     <div key={index} className="appointment-item">
-                      <div className="appointment-date">
-                        {formatDate(appointment.Date)}
+                      <div className="appointment-info">
+                        <div className="appointment-date">
+                          {formatDate(appointment.Date)}
+                        </div>
+                        <div className="appointment-time">
+                          {formatTime(appointment.startTime)}
+                        </div>
+                        <div className="appointment-doctor">
+                          Doctor ID: {appointment.DoctorId}
+                        </div>
                       </div>
-                      <div className="appointment-time">
-                        {formatTime(appointment.startTime)}
-                      </div>
-                      <div className="appointment-doctor">
-                        Doctor ID: {appointment.DoctorId}
+                      <div className="appointment-actions">
+                        <button 
+                          className="reschedule-button"
+                          onClick={() => handleReschedule(appointment.DoctorId)}
+                        >
+                          Reschedule
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -250,16 +225,21 @@ function Landing({ onSignOut }) {
                     Ask Medical Questions
                   </button>
                 </div>
-                <div className="assistant-card">
-                  <h3>Schedule Assistant</h3>
-                  <p>Book appointments through natural conversation</p>
-                  <button
-                    className="primary-button"
-                    onClick={handleScheduleAssist}
-                  >
-                    Book Appointment
-                  </button>
-                </div>
+                
+                {/* Hide Schedule Assistant card for doctors */}
+                {userType !== "doctor" && (
+                  <div className="assistant-card">
+                    <h3>Schedule Assistant</h3>
+                    <p>Book appointments through natural conversation</p>
+                    <button
+                      className="primary-button"
+                      onClick={handleScheduleAssist}
+                    >
+                      Book Appointment
+                    </button>
+                  </div>
+                )}
+                
                 <div className="assistant-card">
                   <h3>{userType === "doctor" ? "Set Availability" : "Manual Booking"}</h3>
                   <p>
