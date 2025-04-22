@@ -57,76 +57,134 @@ function ScheduleAssist() {
     });
   };
 
-  const processUserInput = async (userInput) => {
-    if (!patientId) {
-      return {
-        text: "You need to be logged in as a patient to use this service. Please log in first.",
-        action: "error",
-      };
-    }
+  // const processUserInput = async (userInput) => {
+  //   console.log("processUserInput called; patientId =", patientId);
+  //   if (!patientId) {
+  //     return {
+  //       text: "You need to be logged in as a patient to use this service. Please log in first.",
+  //       action: "error",
+  //     };
+  //   }
 
-    try {
-      // Fix parameter name to match backend expectation (PatientId instead of PatientID)
-      const response = await fetch(
-        "http://localhost:8001/schedulerBotEndpoint",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            input: userInput,
-            PatientId: patientId // Changed from PatientID to PatientId to match backend parameter
-          }),
-        }
-      );
+  //   try {
+  //     // Fix parameter name to match backend expectation (PatientId instead of PatientID)
+  //     const response = await fetch(
+  //       "http://localhost:8001/schedulerBotEndpoint",
+  //       {
+  //         method: "POST",
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //         },
+  //         body: JSON.stringify({
+  //           userQuestions: "Hello, I want to book an appointment",
+  //           PatientId: 1 // Changed from PatientID to PatientId to match backend parameter
+  //         }),
+  //       }
+  //     );
 
-      if (!response.ok) {
-        throw new Error("Failed to get response from scheduler bot");
-      }
+  //     if (!response.ok) {
+  //       throw new Error("Failed to get response from scheduler bot");
+  //     }
+  //     const data = await response.json();
+  //     return {
+  //       text: data.answer,
+  //       action: "response",
+  //     };
+  //   } catch (error) {
+  //     console.log("Sending request to scheduler bot with PatientId:", patientId);
+  //     console.error("Error:", error);
+  //     return {
+  //       text: "I'm sorry, there was an error processing your request. Please try again.",
+  //       action: "error",
+  //     };
+  //   }
+  // };
 
-      const data = await response.json();
-      return {
-        text: data.answer,
-        action: "response",
-      };
-    } catch (error) {
-      console.error("Error:", error);
-      return {
-        text: "I'm sorry, there was an error processing your request. Please try again.",
-        action: "error",
-      };
-    }
-  };
+  // const handleSubmit = async (e) => {
+  //   console.log("🏷 handleSubmit — sending:", input);
+  //   e.preventDefault();
+  //   if (!input.trim()) return;
+
+  //   // Add user message
+  //   const userMessage = {
+  //     text: input,
+  //     sender: "user",
+  //     time: getCurrentTime(),
+  //   };
+  //   setMessages((prev) => [...prev, userMessage]);
+  //   setInput("");
+  //   setIsTyping(true);
+
+  //   // Process the input and get bot response
+  //   const response = await processUserInput(input);
+
+  //   setTimeout(() => {
+  //     const botResponse = {
+  //       text: response.text,
+  //       sender: "bot",
+  //       time: getCurrentTime(),
+  //     };
+  //     setMessages((prev) => [...prev, botResponse]);
+  //     setIsTyping(false);
+  //   }, 1000);
+  // };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
-
-    // Add user message
-    const userMessage = {
-      text: input,
-      sender: "user",
-      time: getCurrentTime(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
+  
+    setMessages(prev => [
+      ...prev,
+      { text: input, sender: "user", time: getCurrentTime() },
+    ]);
     setInput("");
     setIsTyping(true);
-
-    // Process the input and get bot response
-    const response = await processUserInput(input);
-
-    setTimeout(() => {
-      const botResponse = {
-        text: response.text,
-        sender: "bot",
-        time: getCurrentTime(),
-      };
-      setMessages((prev) => [...prev, botResponse]);
+  
+    try {
+      const resp = await fetch("http://localhost:8001/schedulerBotEndpoint", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userQuestions: input,
+          PatientId: Number(patientId),
+        }),
+      });
+  
+      // Always read the body, even on error
+      const bodyText = await resp.text();
+      console.log("← Raw response body:", bodyText);
+  
+      if (!resp.ok) {
+        // Log status + body before throwing
+        console.error(`HTTP ${resp.status}`, bodyText);
+        throw new Error(`HTTP ${resp.status}`);
+      }
+  
+      const data = JSON.parse(bodyText);
+      console.log("→ Parsed data:", data);
+  
+      setMessages(prev => [
+        ...prev,
+        { text: data.answer, sender: "bot", time: getCurrentTime() },
+      ]);
+    } catch (err) {
+      console.error("Fetch failed:", err);
+      setMessages(prev => [
+        ...prev,
+        {
+          text:
+            "I’m sorry, there was an error processing your request. Please try again.",
+          sender: "bot",
+          time: getCurrentTime(),
+        },
+      ]);
+    } finally {
       setIsTyping(false);
-    }, 1000);
+    }
   };
-
+  
+  
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       handleSubmit(e);

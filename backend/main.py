@@ -743,7 +743,7 @@ async def addDocumentToVB(file: UploadFile = File(description="Upload a PDF file
     return {"message": "Document added successfully"}
 
 @app.post("/mediBotRagEndpoint", dependencies=[Depends(RateLimiter(10, 60))])
-def mediBotRagEndpoint(input: mediBotRagInput):
+def mediBotRagEndpoint(input: BotInput):
     '''
     Documentation: 
         This endpoint is used to ask the question from the user to the RAG system, if the vector store is empty, regular LLM(gpt-4o in this case) will be used. 
@@ -755,8 +755,8 @@ def mediBotRagEndpoint(input: mediBotRagInput):
 
 # Scheduler Bot Endpoint:
 @app.post("/schedulerBotEndpoint", dependencies=[Depends(RateLimiter(10, 60))])
-def schedulerBotEndpoint(input:str, PatientId: str): 
-    res,t = schedulerBotV2(input_message=input, PatientId=PatientId)
+def schedulerBotEndpoint(input: BotInput): 
+    res,t = schedulerBotV2(input_message=input.userQuestions, PatientId=input.PatientId)
     return {"answer": res, "Doctor_Details": t}
 
 # News 
