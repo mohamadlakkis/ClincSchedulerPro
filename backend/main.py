@@ -360,6 +360,41 @@ def get_appointments():
         cursor.close()
         connection.close()
 
+@app.get("/patientNameGivenPatientId")
+def getPatientNameGivenPatientId(PatientId:int): 
+    connection = get_connection()
+    if connection is None:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SELECT PatientName FROM Patients WHERE PatientId = %s", (PatientId,))
+        patient_name = cursor.fetchone()
+        if not patient_name:
+            raise HTTPException(status_code=404, detail="Patient not found")
+        return {"patient_name": patient_name['PatientName']}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        connection.close()
+@app.get("/doctorNameGivenDoctorId")
+def getDoctorNameGivenDoctorId(DoctorId:int):
+    connection = get_connection()
+    if connection is None:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SELECT DoctorName FROM Doctors WHERE DoctorId = %s", (DoctorId,))
+        doctor_name = cursor.fetchone()
+        if not doctor_name:
+            raise HTTPException(status_code=404, detail="Doctor not found")
+        return {"doctor_name": doctor_name['DoctorName']}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        connection.close()
+        
 # Post Endpoints:
 
 @app.post("/getAllAppointmentsForPatient")
@@ -485,9 +520,26 @@ def book_appointment(input: bookAppointmentInput):
     conn = get_connection()
     if conn is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
-
+    
     try:
         cursor = conn.cursor()
+        # 3.1) Check if PatientId is available at this time
+        cursor.execute(
+            """
+            SELECT DoctorId
+              FROM Appointments
+             WHERE PatientId  = %s
+               AND Date      = %s
+               AND startTime = %s
+            """, 
+            (input.PatientId, appt_date, input.startTime)
+        )
+        row = cursor.fetchone()
+        if row:
+            raise HTTPException(
+            status_code=400,
+            detail="Cannot book an appointment. You already have an appointment with another doctor at this time."
+            )
         cursor.execute(
             """
             UPDATE Appointments
