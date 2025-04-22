@@ -28,7 +28,7 @@ class showOneDoctorAllPatientsInput(BaseModel):
     PatientId: int
 
 class deleteAppointmentInput(BaseModel): 
-    PatientId: int
+    PatientId: Optional[int] = None
     DoctorId: int
     Date: str = "2023-10-01"
     startTime: int
@@ -44,7 +44,6 @@ class DeleteAvailabilityOfDoctorInput(BaseModel):
     DoctorId: int
     Date: str = "2025-04-21"
     startTime: int
-
 
 class bookAppointmentInput(BaseModel):
     PatientId: int

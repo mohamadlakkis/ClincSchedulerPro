@@ -604,22 +604,38 @@ def deleteAppointment(input: deleteAppointmentInput):
     '''
     Documentation: 
         - to delete an appointment between patient and doctor at a particular day and time, note: it will keep the doctor available during this time, so the doctor can be booked by other patients
+        - if PatientId is not provided, it will delete any appointment for this doctor at the specified date and time
     '''
     connection = get_connection()
     if connection is None:
         raise HTTPException(status_code=500, detail="Database connection failed")
     try:
         cursor = connection.cursor()
-        query = """
-            UPDATE Appointments
-                SET PatientId = NULL
-                WHERE PatientId = %s
-                AND DoctorId  = %s
-                AND Date      = %s
-                AND startTime = %s
-
-        """
-        values = (input.PatientId, input.DoctorId, input.Date, input.startTime)
+        
+        # Different query based on whether PatientId is provided
+        if input.PatientId is not None:
+            # Patient canceling their own appointment
+            query = """
+                UPDATE Appointments
+                    SET PatientId = NULL
+                    WHERE PatientId = %s
+                    AND DoctorId  = %s
+                    AND Date      = %s
+                    AND startTime = %s
+            """
+            values = (input.PatientId, input.DoctorId, input.Date, input.startTime)
+        else:
+            # Doctor canceling any appointment at this time slot
+            query = """
+                UPDATE Appointments
+                    SET PatientId = NULL
+                    WHERE DoctorId  = %s
+                    AND Date      = %s
+                    AND startTime = %s
+                    AND PatientId IS NOT NULL
+            """
+            values = (input.DoctorId, input.Date, input.startTime)
+            
         cursor.execute(query, values)
         connection.commit()
         return {"message": "Appointment deleted successfully"}
